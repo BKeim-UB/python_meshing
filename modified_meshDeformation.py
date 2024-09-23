@@ -39,7 +39,7 @@ def compute_tans(X, deformation):
 def compute_normals(tangents):
     """Compute the normal vectors by rotating the tangents by 90 degrees."""
     # For each tangent, rotate by 90 degrees to get the normal vector
-    normals = np.array([-tangents[:, 1], tangents[:, 0]]).T
+    normals = np.array([tangents[:, 1], tangents[:, 0]]).T
     return normals
 
 # Example usage
@@ -57,7 +57,7 @@ plt.figure(figsize=(8, 6))
 plt.plot(X, deformation, label='Deformation')
 
 # Plot the normals for visualization
-for i in range(0, len(X), 10):  # Plot every 10th normal for clarity
+for i in range(0, len(X), 1):  # Plot every 10th normal for clarity
     plt.arrow(X[i], deformation[i], normals[i, 0] * 0.5, normals[i, 1] * 0.5, 
               head_width=0.1, head_length=0.2, fc='r', ec='r')
 
