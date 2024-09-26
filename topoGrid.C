@@ -25,6 +25,8 @@ Description
 
 #include "argList.H"
 #include "fvMesh.H"
+//#include "fvCFD.H"
+#include "vector.H"
 #include "pointFields.H"
 #include "IStringStream.H"
 #include "volPointInterpolation.H"
@@ -34,8 +36,7 @@ Description
 #include <sstream>
 #include "IOstreams.H"
 #include <cstring>
-#include "fvCFD.H"
-#include "vector.H"
+
 
 using namespace Foam;
 
@@ -204,8 +205,8 @@ int main(int argc, char *argv[])
 {
     #include "setRootCase.H"
     #include "createTime.H"
-    #include "createMeshNoChangers.H"
     #include "createMesh.H"
+  //    #include "createMeshNoChangers.H"
 
     // Read the dictionary file (topoGridDict) from the "system" folder
     IOdictionary topoDict
@@ -354,107 +355,153 @@ int main(int argc, char *argv[])
     );
 
 
+    //---------------------------------------------------------------------------------------------
+    
+
+
+
+
+
     // Check if the patch name is provided as an argument
     if (argc < 2)
-      {
+    {
         FatalErrorInFunction << "Usage: " << argv[0] << " patchName" << exit(FatalError);
-      }
+    }
 
     // Get the patch name from command line arguments
     word patchName(argv[1]);
 
-    // Find the patch by name in the mesh
-    const polyBoundaryMesh& boundary = mesh.boundary();
-    label patchID = boundary.findPatchID(patchName);
+    // Find the patch by manually searching for the name in the boundary mesh
+    label patchID = -1;
+    forAll(mesh.boundaryMesh(), patchi)
+    {
+        if (mesh.boundaryMesh()[patchi].name() == patchName)
+        {
+            patchID = patchi;
+            break;
+        }
+    }
 
     if (patchID == -1)
-      {
+    {
         FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-      }
+    }
 
-    const fvPatch& patch = boundary[patchID];
-    const labelList& patchPoints = patch.facePoints();
-    
-    // Loop through each point on the patch
-    forAll(patchPoints, pointi)
-      {
-        label pointIndex = patchPoints[pointi];
-        point pointP = mesh.points()[pointIndex];
+    // Use fvBoundaryMesh to access the patch
+    const fvPatch& patch = mesh.boundary()[patchID];
 
-        vector avgNormal(0, 0, 0); // To store the average normal vector
-        int faceCount = 0;         // Count of faces containing point P
+    // Loop through each face on the patch
+    forAll(patch, facei)
+    {
+        const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
+        const labelList& facePointsIndices = f;  // `face` class stores the point indices
 
-        // Loop over the faces of the patch
-        const labelList& patchFaces = patch.faceCells();
+        // Loop through each point index in the face
+        forAll(facePointsIndices, pointi)
+        {
+            label pointIndex = facePointsIndices[pointi];
+            point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 
-        forAll(patchFaces, facei)
-	  {
-            const face& f = mesh.faces()[patchFaces[facei]];
+            vector avgNormal(0, 0, 0); // To store the average normal vector
+            int faceCount = 0;         // Count of faces containing point P
 
-            if (f.containsPoint(pointIndex))
-	      {
-                // This face contains point P, so we need to find the two connected points
-                labelList facePoints = f.points();
+            // Loop over the faces of the patch
+            forAll(patch.faceCells(), facej)
+            {
+                const face& otherFace = mesh.faces()[patch.faceCells()[facej]];
+                const labelList& otherFacePoints = otherFace;
 
-                // Find two points on the face connected to P
-                label p1 = -1, p2 = -1;
-                for (int fp = 0; fp < facePoints.size(); ++fp)
+                // Manually check if the face contains the point
+                bool containsPoint = false;
+		forAll(otherFacePoints, fp)
 		  {
-                    if (facePoints[fp] == pointIndex)
+		    if (otherFacePoints[fp] == pointIndex)
 		      {
-                        // The two neighboring points connected to P on this face
-                        p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
-                        p2 = facePoints[(fp + 1) % facePoints.size()];
-                        break;
+			containsPoint = true;
+			break;
 		      }
 		  }
 
-                if (p1 == -1 || p2 == -1)
+		if (containsPoint)
 		  {
-                    FatalErrorInFunction << "Unable to find neighboring points for point " << pointIndex << exit(FatalError);
+		    // This face contains point P, so we need to find the two connected points
+		    labelList facePoints = otherFace;
+
+		    // Find two points on the face connected to P
+		    label p1 = -1, p2 = -1;
+		    for (int fp = 0; fp < facePoints.size(); ++fp)
+		      {
+			if (facePoints[fp] == pointIndex)
+			  {
+			    // The two neighboring points connected to P on this face
+			    p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
+			    p2 = facePoints[(fp + 1) % facePoints.size()];
+			    break;
+			  }
+		      }
+
+		    if (p1 == -1 || p2 == -1)
+		      {
+			FatalErrorInFunction << "Unable to find neighboring points for point " << pointIndex << exit(FatalError);
+		      }
+
+		    // Points connected to point P
+		    point point1 = mesh.points()[p1];
+		    point point2 = mesh.points()[p2];
+
+		    // Compute vectors connecting point P with point1 and point2
+		    vector v1 = point1 - pointP;
+		    vector v2 = point2 - pointP;
+
+		    // Compute the cross product of v1 and v2 to get the normal
+		    vector normal = v1 ^ v2;  // Use the ^ operator for cross product
+
+		    // Accumulate the normal vector
+		    avgNormal += normal;
+		    faceCount++;
 		  }
 
-                // Points connected to point P
-                point point1 = mesh.points()[p1];
-                point point2 = mesh.points()[p2];
 
-                // Compute vectors connecting point P with point1 and point2
-                vector v1 = point1 - pointP;
-                vector v2 = point2 - pointP;
 
-                // Compute the normal vector orthogonal to v1 and v2 (cross product)
-                vector normal = Foam::cross(v1, v2);
 
-                // Accumulate the normal vector
-                avgNormal += normal;
-                faceCount++;
-	      }
-	  }
 
-        // Average the normal vector
-        if (faceCount > 0)
-	  {
-            avgNormal /= faceCount;
 
-            // Normalize the vector
-            avgNormal /= mag(avgNormal);
 
-            // Output the normalized average normal vector for point P
-            Info << "Point " << pointIndex << " avg normal: " << avgNormal << endl;
-	  }
-        else
-	  {
-            Info << "Point " << pointIndex << " not found in any faces." << endl;
-	  }
-      }
 
-    Info << "Completed normal vector calculation for patch: " << patchName << endl;
-    }
 
+
+
+
+
+
+    
+
+	    
+	    //------------------------------------------------------------------------------------------------------------------------------
+ // Average the normal vector
+            if (faceCount > 0)
+            {
+                avgNormal /= faceCount;
+
+                // Normalize the vector
+                avgNormal /= mag(avgNormal);
+
+                // Output the normalized average normal vector for point P
+                Info << "Point " << pointIndex << " avg normal: " << avgNormal << endl;
+            }
+            else
+            {
+                Info << "Point " << pointIndex << " not found in any faces." << endl;
+            }
+
+
+	    
+
+    
 
     // Loop over all cells in the mesh to interpolate elevation values
     forAll(pDeform,pointi)
-      {
+    {
         // Get x, y coordinates of the pointi
         scalar x = mesh.points()[pointi].x();
         scalar y = mesh.points()[pointi].y();
@@ -469,7 +516,7 @@ int main(int argc, char *argv[])
 
         // Interpolate elevation value
         if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-	  {
+        {
             // Bilinear interpolation
             scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
             scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
@@ -480,10 +527,10 @@ int main(int argc, char *argv[])
             scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
             scalar zInterp = 
-	      v00 * (1 - xLerp) * (1 - yLerp) +
-	      v01 * xLerp * (1 - yLerp) +
-	      v10 * (1 - xLerp) * yLerp +
-	      v11 * xLerp * yLerp;
+                v00 * (1 - xLerp) * (1 - yLerp) +
+                v01 * xLerp * (1 - yLerp) +
+                v10 * (1 - xLerp) * yLerp +
+                v11 * xLerp * yLerp;
 
             // Assign interpolated value to the volScalarField U
             pDeform[pointi].z() = zRel * zInterp;
@@ -491,58 +538,63 @@ int main(int argc, char *argv[])
             zNew = z + zRel * zInterp;
                 
             if ( z>= 0.0)
-	      {
+            {
                 if (dzVert > 0)
-		  {
+                {
                     // enlarge from a fixed height above the maximum
                     // topography and the top, thus from an horizontal
                     // plane to the top
                     z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
-		  }
+                }
                 else
-		  {
+                {
                     // enlarge from the topography to the top
                     z2Rel = (zNew - zInterp) / (zMax - zInterp);
-		  }
+                }
                 z2Rel = std::pow(z2Rel,exp_shape);
                 
                 pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
                 pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
-	      }
+            }
             else
-	      {
+            {
                 pDeform[pointi].x() = 0.0;
                 pDeform[pointi].y() = 0.0;
-	      }        
-	  }
+            }        
+        }
         else
-	  {
+        {
             // If outside the raster bounds, set to a default value (e.g., 0)
             pDeform[pointi].z() = 0.0;
             pDeform[pointi].x() = 0.0;
             pDeform[pointi].y() = 0.0;
-	  }
-      }
+        }
+    }
            
     
     pointField newPoints
-      (
-       zeroPoints + pDeform
-       );
+    (
+        zeroPoints + pDeform
+    );
 
     mesh.setPoints(newPoints);
     mesh.write();
 
     Info<< endl;
-}
+    }
 
-Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-<< "  ClockTime = " << runTime.elapsedClockTime() << " s"
-<< nl << endl;
+    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+        << nl << endl;
 
-Info<< "End\n" << endl;
+    Info<< "End\n" << endl;
 
-return 0;
+    
+    Info << "Completed normal vector calculation for patch: " << patchName << endl;
+	}
+    }
+    }
+    return 0;
 }
 
 
