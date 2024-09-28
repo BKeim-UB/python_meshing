@@ -1,4 +1,4 @@
-/*---------------------------------------------------------------------------*\
+/*---------------------------------------------------------------------------* \
 License
     This file is part of OpenPDAC.
 
@@ -25,7 +25,6 @@ Description
 
 #include "argList.H"
 #include "fvMesh.H"
-//#include "fvCFD.H"
 #include "vector.H"
 #include "pointFields.H"
 #include "IStringStream.H"
@@ -41,7 +40,6 @@ Description
 using namespace Foam;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 
 // Function to compute the normal vector of a triangle formed by points p1, p2, p3
 vector computeNormal(const point& p1, const point& p2, const point& p3)
@@ -206,8 +204,7 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-  //    #include "createMeshNoChangers.H"
-
+  
     // Read the dictionary file (topoGridDict) from the "system" folder
     IOdictionary topoDict
     (
@@ -354,63 +351,129 @@ int main(int argc, char *argv[])
         0.0*zeroPoints
     );
 
-
-    //---------------------------------------------------------------------------------------------
-    
-
-
-
-
+  
+//---------------------------------------------------------------------------------------------
 
     // Check if the patch name is provided as an argument
-    if (argc < 2)
-    {
-        FatalErrorInFunction << "Usage: " << argv[0] << " patchName" << exit(FatalError);
-    }
+    //    if (argc < 2)
+    // {
+    //    FatalErrorInFunction << "Usage: " << argv[0] << " patchName" << exit(FatalError);
+    //  }
 
     // Get the patch name from command line arguments
-    word patchName(argv[1]);
+    //    const  word patchName(argv[1]);
+
+    //    const word patchName = "bottom";  // Hardcode the patch for boundary of interest
 
     // Find the patch by manually searching for the name in the boundary mesh
-    label patchID = -1;
-    forAll(mesh.boundaryMesh(), patchi)
-    {
-        if (mesh.boundaryMesh()[patchi].name() == patchName)
-        {
-            patchID = patchi;
-            break;
-        }
-    }
+    //        label patchID = -1;
+	//        forAll(mesh.boundaryMesh(), patchi)
+	  //          {
+	    //      if (mesh.boundaryMesh()[patchi].name() == patchName)
+	//    	  {
+	    //          patchID = patchi;
+	  //          break;
+	  //    	  }
+      //    }
 
-    if (patchID == -1)
-    {
-        FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-    }
+	//        if (patchID == -1)
+	  //          {
+	    //    	        FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
+		//    }
 
     // Use fvBoundaryMesh to access the patch
+	//    const fvPatch& patch = mesh.boundary()[patchID];
+
+    const word patchName = "bottom";  // Hardcode the patch for boundary of interest
+
+
+    // Manually find the patch by iterating through boundaryMesh
+    label patchID = -1;
+    forAll(mesh.boundaryMesh(), patchi)
+      {
+	if (mesh.boundaryMesh()[patchi].name() == patchName)
+	  {
+	    patchID = patchi;
+	    break;
+	  }
+      }
+
+    if (patchID == -1)
+      {
+	FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
+      }
+
+    
+    // Directly find the patch by name
+    //    label patchID = mesh.boundaryMesh().findPatchID(patchName);
+
+    //    if (patchID == -1)
+      //      {
+	//	FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
+	//     }
+
+    // Access the patch
     const fvPatch& patch = mesh.boundary()[patchID];
 
+    std::cout << "" << std::endl ;
+    std::cout << "patchName = " << patchName << std::endl ;
+    std::cout << "" << std::endl ;
+    std::cout << "patchID = " << patchID << std::endl ;
+    std::cout << "" << std::endl ;
+    
     // Loop through each face on the patch
     forAll(patch, facei)
-    {
+      {
         const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
         const labelList& facePointsIndices = f;  // `face` class stores the point indices
 
         // Loop through each point index in the face
         forAll(facePointsIndices, pointi)
-        {
+	  {
             label pointIndex = facePointsIndices[pointi];
-            point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
+	    Info << "pointIndex = " << pointIndex << endl;
+	    std::cout << "" << std::endl;
+	    
+	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 
-            vector avgNormal(0, 0, 0); // To store the average normal vector
-            int faceCount = 0;         // Count of faces containing point P
+	    Info << "pointP = " << pointP << endl;
+	    //	    std::cout << "pointP = ("
+	    //                       << pointP.x() << ", "
+	    //                       << pointP.y() << ", "
+	    //                       << pointP.z() << ")" << std::endl;
+             std::cout << "" << std::endl ;
 
-            // Loop over the faces of the patch
-            forAll(patch.faceCells(), facej)
-            {
-                const face& otherFace = mesh.faces()[patch.faceCells()[facej]];
-                const labelList& otherFacePoints = otherFace;
+	    
+	    
+	    std::cout << "Initializing avgNormal Vector" << std::endl ;
+	    std::cout << "" << std::endl ;
 
+	    vector avgNormal(0, 0, 0); // To store the average normal vector
+	    std::cout << "Initial avgNormal = (" 
+		      << avgNormal.x() << ", " 
+		      << avgNormal.y() << ", " 
+		      << avgNormal.z() << ")" << std::endl;
+            std::cout << "" << std::endl ;
+
+	    int faceCount = 0;         // Count of faces containing point P
+
+	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
+	    std::cout << "" << std::endl ; 
+	    
+            //  Loop over the faces of the patch
+	    forAll(patch.faceCells(), facej)
+	      {
+		const face& otherFace = mesh.faces()[patch.faceCells()[facej]];
+		const labelList& otherFacePoints = otherFace;
+
+		std::cout << "facej iterator = " << facej << std::endl ; 
+		Info << "otherFace = " << otherFace << endl;
+		Info << "otherFacePoints = " << otherFacePoints << endl;
+		
+		//	std::cout << "otherFace = " << otherFace  << std::endl ;
+		// std::cout << "" << std::endl ;
+
+		
                 // Manually check if the face contains the point
                 bool containsPoint = false;
 		forAll(otherFacePoints, fp)
@@ -427,8 +490,16 @@ int main(int argc, char *argv[])
 		    // This face contains point P, so we need to find the two connected points
 		    labelList facePoints = otherFace;
 
+		    //		    std::cout << "facePoints = " << facePoints  <<    std::endl ;
+		    std::cout << "" << std::endl ;
+		    
+		    
 		    // Find two points on the face connected to P
 		    label p1 = -1, p2 = -1;
+		    std::cout << "p1 = " << p1 << std::endl ;
+		    std::cout << "" << std::endl ;
+		    std::cout << "p2 = " << p2 <<  std::endl ;
+		    
 		    for (int fp = 0; fp < facePoints.size(); ++fp)
 		      {
 			if (facePoints[fp] == pointIndex)
@@ -436,6 +507,11 @@ int main(int argc, char *argv[])
 			    // The two neighboring points connected to P on this face
 			    p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
 			    p2 = facePoints[(fp + 1) % facePoints.size()];
+
+			    std::cout << "New p1 = " << p1 << std::endl ;
+			    std::cout << "" << std::endl ;
+			    std::cout << "New p2 = " << p2 <<  std::endl ;    
+
 			    break;
 			  }
 		      }
@@ -449,127 +525,136 @@ int main(int argc, char *argv[])
 		    point point1 = mesh.points()[p1];
 		    point point2 = mesh.points()[p2];
 
+		    Info << "point1 = " << point1 << endl ;
+		    std::cout << "" << std::endl ;
+		    Info << "point2 = " << point2 <<  endl ;
+
+		    
 		    // Compute vectors connecting point P with point1 and point2
 		    vector v1 = point1 - pointP;
 		    vector v2 = point2 - pointP;
 
+		    Info << "v1 = " << v1 << endl ;  
+		    std::cout << "" << std::endl;
+		    Info << "v1 = " << v1 << endl ;
+		    
 		    // Compute the cross product of v1 and v2 to get the normal
 		    vector normal = v1 ^ v2;  // Use the ^ operator for cross product
+		    std::cout << "" << std::endl;
+		    Info << "normal = " << normal << endl;  
 
-		    // Accumulate the normal vector
+		    std::cout << "facecount = " << faceCount << std::endl;
+		    Info << "avgNormal" << avgNormal << endl;
+		    std::cout << "" << std::endl; 
+		    
+		    // Accumulate the normal vecto
 		    avgNormal += normal;
 		    faceCount++;
+
+		    std::cout << "facecount + 1 = "	<< faceCount <<	std::endl;
+                    Info << "avgNormal+ "	<< avgNormal <<	endl;
+
 		  }
 
+		
+ //------------------------------------------------------------------------------------------------------------------------------
 
+	// Average the normal vector
+	if (faceCount > 0)
+	  {
+	    avgNormal /= faceCount;
 
+	    // Normalize the vector
+	    avgNormal /= mag(avgNormal);
 
-
-
-
-
-
-
-
-
-
-
-    
-
+	    // Output the normalized average normal vector for point P
+	    std::cout << "Point " << pointIndex << " avgNormal = ("
+		      << avgNormal.x() << ", "
+		      << avgNormal.y() << ", "
+		      << avgNormal.z() << ")" << std::endl;
+	    std::cout << "" << std::endl ;
 	    
-	    //------------------------------------------------------------------------------------------------------------------------------
- // Average the normal vector
-            if (faceCount > 0)
-            {
-                avgNormal /= faceCount;
-
-                // Normalize the vector
-                avgNormal /= mag(avgNormal);
-
-                // Output the normalized average normal vector for point P
-                Info << "Point " << pointIndex << " avg normal: " << avgNormal << endl;
-            }
-            else
-            {
-                Info << "Point " << pointIndex << " not found in any faces." << endl;
-            }
+	    //	    std::cout << "Point " << pointIndex << " avg normal: " << avgNormal << std::endl;
+	    std::cout << "" << std::endl ; 
+	  }
+	else
+	  {
+	    Info << "Point " << pointIndex << " not found in any faces." << endl;
+	  }
 
 
-	    
-
-    
-
-    // Loop over all cells in the mesh to interpolate elevation values
-    forAll(pDeform,pointi)
-    {
-        // Get x, y coordinates of the pointi
-        scalar x = mesh.points()[pointi].x();
-        scalar y = mesh.points()[pointi].y();
-        scalar z = mesh.points()[pointi].z();
-	cout << x;
+	// Loop over all cells in the mesh to interpolate elevation values
+	forAll(pDeform,pointi)
+	  {
+	    // Get x, y coordinates of the pointi
+	    scalar x = mesh.points()[pointi].x();
+	    scalar y = mesh.points()[pointi].y();
+	    scalar z = mesh.points()[pointi].z();
+	    //	    std::cout << "x = " << x << std::endl;
+	    //	    std::cout << "" << std::endl; 
         
-        scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
+	    scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
 
-        // Calculate row and column indices in the elevation matrix
-        int colIndex = (x - xllcorner) / cellsize;
-        int rowIndex = (y - yllcorner) / cellsize;
+	    // Calculate row and column indices in the elevation matrix
+	    int colIndex = (x - xllcorner) / cellsize;
+	    int rowIndex = (y - yllcorner) / cellsize;
 
-        // Interpolate elevation value
-        if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-        {
-            // Bilinear interpolation
-            scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
-            scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
+	    // Interpolate elevation value
+	    if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
+	      {
+		// Bilinear interpolation
+		scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
+		scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
 
-            scalar v00 = elevation(rowIndex, colIndex);
-            scalar v01 = elevation(rowIndex, colIndex + 1);
-            scalar v10 = elevation(rowIndex + 1, colIndex);
-            scalar v11 = elevation(rowIndex + 1, colIndex + 1);
+		scalar v00 = elevation(rowIndex, colIndex);
+		scalar v01 = elevation(rowIndex, colIndex + 1);
+		scalar v10 = elevation(rowIndex + 1, colIndex);
+		scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
-            scalar zInterp = 
-                v00 * (1 - xLerp) * (1 - yLerp) +
-                v01 * xLerp * (1 - yLerp) +
-                v10 * (1 - xLerp) * yLerp +
-                v11 * xLerp * yLerp;
+		scalar zInterp = 
+		  v00 * (1 - xLerp) * (1 - yLerp) +
+		  v01 * xLerp * (1 - yLerp) +
+		  v10 * (1 - xLerp) * yLerp +
+		  v11 * xLerp * yLerp;
 
-            // Assign interpolated value to the volScalarField U
-            pDeform[pointi].z() = zRel * zInterp;
+		// Assign interpolated value to the volScalarField U
+		pDeform[pointi].z() = zRel * zInterp;
                 
-            zNew = z + zRel * zInterp;
+		zNew = z + zRel * zInterp;
                 
-            if ( z>= 0.0)
-            {
-                if (dzVert > 0)
-                {
-                    // enlarge from a fixed height above the maximum
-                    // topography and the top, thus from an horizontal
-                    // plane to the top
-                    z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
-                }
-                else
-                {
-                    // enlarge from the topography to the top
-                    z2Rel = (zNew - zInterp) / (zMax - zInterp);
-                }
-                z2Rel = std::pow(z2Rel,exp_shape);
+		if ( z>= 0.0)
+		  {
+		    if (dzVert > 0)
+		      {
+			// enlarge from a fixed height above the maximum
+			// topography and the top, thus from an horizontal
+			// plane to the top
+			z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+		      }
+		    else
+		      {
+			// enlarge from the topography to the top
+			z2Rel = (zNew - zInterp) / (zMax - zInterp);
+		      }
+		    z2Rel = std::pow(z2Rel,exp_shape);
                 
-                pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
-                pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
-            }
-            else
-            {
-                pDeform[pointi].x() = 0.0;
-                pDeform[pointi].y() = 0.0;
-            }        
-        }
-        else
-        {
-            // If outside the raster bounds, set to a default value (e.g., 0)
-            pDeform[pointi].z() = 0.0;
-            pDeform[pointi].x() = 0.0;
-            pDeform[pointi].y() = 0.0;
-        }
-    }
+		    pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
+		    pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
+		  }
+		else
+		  {
+		    pDeform[pointi].x() = 0.0;
+		    pDeform[pointi].y() = 0.0;
+		  }        
+	      }
+	    else
+	      {
+		// If outside the raster bounds, set to a default value (e.g., 0)
+		pDeform[pointi].z() = 0.0;
+		pDeform[pointi].x() = 0.0;
+		pDeform[pointi].y() = 0.0;
+	      }
+	  }
            
     
     pointField newPoints
@@ -580,17 +665,17 @@ int main(int argc, char *argv[])
     mesh.setPoints(newPoints);
     mesh.write();
 
-    Info<< endl;
+    //    Info<< endl;
     }
 
-    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-        << nl << endl;
+	      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+	      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+	    //        << nl << endl;
 
-    Info<< "End\n" << endl;
+	    //    Info<< "End\n" << endl;
 
     
-    Info << "Completed normal vector calculation for patch: " << patchName << endl;
+	    //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
 	}
     }
     }
