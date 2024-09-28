@@ -1,27 +1,27 @@
 /*---------------------------------------------------------------------------* \
-License
-    This file is part of OpenPDAC.
+  License
+  This file is part of OpenPDAC.
 
-    OpenPDAC is free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+  OpenPDAC is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-    OpenPDAC is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-    for more details.
+  OpenPDAC is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with OpenPDAC.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenPDAC.  If not, see <http://www.gnu.org/licenses/>.
 
-Application
-    topoGrid
+  Application
+  topoGrid
 
-Description
-    Deforms a polyMesh using an ESRI raster ascii file.
+  Description
+  Deforms a polyMesh using an ESRI raster ascii file.
 
-\*---------------------------------------------------------------------------*/
+  \*---------------------------------------------------------------------------*/
 
 #include "argList.H"
 #include "fvMesh.H"
@@ -44,643 +44,603 @@ using namespace Foam;
 // Function to compute the normal vector of a triangle formed by points p1, p2, p3
 vector computeNormal(const point& p1, const point& p2, const point& p3)
 {
-    vector v1 = p2 - p1;  // Edge vector 1
-    vector v2 = p3 - p1;  // Edge vector 2
+  vector v1 = p2 - p1;  // Edge vector 1
+  vector v2 = p3 - p1;  // Edge vector 2
 
-    // Compute the cross product of v1 and v2 to get the normal
-    vector normal = Foam::vector
+  // Compute the cross product of v1 and v2 to get the normal
+  vector normal = Foam::vector
     (
-        v1.y() * v2.z() - v1.z() * v2.y(),  // x-component
-        v1.z() * v2.x() - v1.x() * v2.z(),  // y-component
-        v1.x() * v2.y() - v1.y() * v2.x()   // z-component
-    );
+     v1.y() * v2.z() - v1.z() * v2.y(),  // x-component
+     v1.z() * v2.x() - v1.x() * v2.z(),  // y-component
+     v1.x() * v2.y() - v1.y() * v2.x()   // z-component
+     );
 
-    // Normalize the normal vector
-    scalar magnitude = mag(normal);
-    if (magnitude > SMALL)
+  // Normalize the normal vector
+  scalar magnitude = mag(normal);
+  if (magnitude > SMALL)
     {
-        normal /= magnitude;
+      normal /= magnitude;
     }
 
-    return normal;
+  return normal;
 }
 
 // Function to write a single triangle in binary format
 void writeBinaryTriangle(std::ofstream& stlFile, const vector& normal, const point& p1, const point& p2, const point& p3)
 {
-    // Write normal vector (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&normal.x()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&normal.y()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&normal.z()), 4);
+  // Write normal vector (12 bytes: 3 floats)
+  stlFile.write(reinterpret_cast<const char*>(&normal.x()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&normal.y()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&normal.z()), 4);
 
-    // Write vertex 1 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p1.x()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p1.y()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p1.z()), 4);
+  // Write vertex 1 (12 bytes: 3 floats)
+  stlFile.write(reinterpret_cast<const char*>(&p1.x()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p1.y()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p1.z()), 4);
 
-    // Write vertex 2 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p2.x()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p2.y()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p2.z()), 4);
+  // Write vertex 2 (12 bytes: 3 floats)
+  stlFile.write(reinterpret_cast<const char*>(&p2.x()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p2.y()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p2.z()), 4);
 
-    // Write vertex 3 (12 bytes: 3 floats)
-    stlFile.write(reinterpret_cast<const char*>(&p3.x()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p3.y()), 4);
-    stlFile.write(reinterpret_cast<const char*>(&p3.z()), 4);
+  // Write vertex 3 (12 bytes: 3 floats)
+  stlFile.write(reinterpret_cast<const char*>(&p3.x()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p3.y()), 4);
+  stlFile.write(reinterpret_cast<const char*>(&p3.z()), 4);
 
-    // Write attribute byte count (2 bytes, set to 0)
-    char attribute[2] = "0";
-    stlFile.write(attribute,2);
+  // Write attribute byte count (2 bytes, set to 0)
+  char attribute[2] = "0";
+  stlFile.write(attribute,2);
 }
 
 
 // Function to write STL surface in binary format
 void writeBinarySTL(const word& stlFileName, const RectangularMatrix<scalar>& elevation, scalar xOffset, scalar yOffset, scalar cellSize)
 {
-    std::ofstream stlFile(stlFileName.c_str(), std::ios::binary);
-    if (!stlFile)
+  std::ofstream stlFile(stlFileName.c_str(), std::ios::binary);
+  if (!stlFile)
     {
-        FatalErrorInFunction << "Cannot open STL file " << stlFileName << " for writing" << exit(FatalError);
+      FatalErrorInFunction << "Cannot open STL file " << stlFileName << " for writing" << exit(FatalError);
     }
 
-    // Write 80-byte header (just fill with 0 or any message)
-    char header[80] = "Generated by OpenFOAM";
-    stlFile.write(header, 80);
+  // Write 80-byte header (just fill with 0 or any message)
+  char header[80] = "Generated by OpenFOAM";
+  stlFile.write(header, 80);
 
-    // Get dimensions of the elevation grid
-    const label numRows = elevation.m();
-    const label numCols = elevation.n();
+  // Get dimensions of the elevation grid
+  const label numRows = elevation.m();
+  const label numCols = elevation.n();
     
-    // Calculate number of triangles (two per cell)
-    label numTriangles = 2 * (numRows - 1) * (numCols - 1);
+  // Calculate number of triangles (two per cell)
+  label numTriangles = 2 * (numRows - 1) * (numCols - 1);
     
-    // Write the number of triangles (4 bytes)
-    stlFile.write(reinterpret_cast<const char*>(&numTriangles), 4);
+  // Write the number of triangles (4 bytes)
+  stlFile.write(reinterpret_cast<const char*>(&numTriangles), 4);
 
-    // Loop over each cell in the grid and create two triangles per cell
-    for (label i = 0; i < numRows - 1; ++i)
+  // Loop over each cell in the grid and create two triangles per cell
+  for (label i = 0; i < numRows - 1; ++i)
     {
-        for (label j = 0; j < numCols - 1; ++j)
+      for (label j = 0; j < numCols - 1; ++j)
         {
-            // Get corner points of the cell
-            point p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
-            point p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
-            point p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
-            point p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
+	  // Get corner points of the cell
+	  point p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
+	  point p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
+	  point p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
+	  point p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
 
-            // First triangle (p1, p2, p3)
-            vector normal1 = computeNormal(p1, p2, p3);
-            // Info << p1 << p2 << p3 << normal1 << endl;
-            writeBinaryTriangle(stlFile, normal1, p1, p2, p3);
+	  // First triangle (p1, p2, p3)
+	  vector normal1 = computeNormal(p1, p2, p3);
+	  // Info << p1 << p2 << p3 << normal1 << endl;
+	  writeBinaryTriangle(stlFile, normal1, p1, p2, p3);
 
-            // Second triangle (p2, p4, p3)
-            vector normal2 = computeNormal(p2, p4, p3);
-            writeBinaryTriangle(stlFile, normal2, p2, p4, p3);
+	  // Second triangle (p2, p4, p3)
+	  vector normal2 = computeNormal(p2, p4, p3);
+	  writeBinaryTriangle(stlFile, normal2, p2, p4, p3);
         }
     }
 
-    stlFile.close();
-    Info << "Binary STL surface written to " << stlFileName << endl;
+  stlFile.close();
+  Info << "Binary STL surface written to " << stlFileName << endl;
 }
 
 // Function to write STL surface from the elevation grid
 void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevation, scalar xOffset, scalar yOffset, scalar cellSize)
 {
-    std::ofstream stlFile(stlFileName.c_str());
-    if (!stlFile)
+  std::ofstream stlFile(stlFileName.c_str());
+  if (!stlFile)
     {
-        FatalErrorInFunction << "Cannot open STL file " << stlFileName << " for writing" << exit(FatalError);
+      FatalErrorInFunction << "Cannot open STL file " << stlFileName << " for writing" << exit(FatalError);
     }
 
-    // Write STL file header
-    stlFile << "solid topoSurface" << std::endl;
+  // Write STL file header
+  stlFile << "solid topoSurface" << std::endl;
 
-    // Get dimensions of the elevation grid
-    const label numRows = elevation.m();
-    const label numCols = elevation.n();
+  // Get dimensions of the elevation grid
+  const label numRows = elevation.m();
+  const label numCols = elevation.n();
 
-    // Loop over each cell in the grid and create two triangles per cell
-    for (label i = 0; i < numRows - 1; ++i)
+  // Loop over each cell in the grid and create two triangles per cell
+  for (label i = 0; i < numRows - 1; ++i)
     {
-        for (label j = 0; j < numCols - 1; ++j)
+      for (label j = 0; j < numCols - 1; ++j)
         {
-            // Get corner points of the cell (elevation grid)
-            vector p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
-            vector p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
-            vector p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
-            vector p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
+	  // Get corner points of the cell (elevation grid)
+	  vector p1(xOffset + j * cellSize, yOffset + i * cellSize, elevation(i, j));           // Top-left corner
+	  vector p2(xOffset + (j + 1) * cellSize, yOffset + i * cellSize, elevation(i, j + 1));  // Top-right corner
+	  vector p3(xOffset + j * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j));  // Bottom-left corner
+	  vector p4(xOffset + (j + 1) * cellSize, yOffset + (i + 1) * cellSize, elevation(i + 1, j + 1));  // Bottom-right corner
 
-            // First triangle (p1, p2, p3) - Top-left, top-right, bottom-left
-            vector normal1 = computeNormal(p1, p2, p3);
-            stlFile << "  facet normal " << normal1.x() << " " << normal1.y() << " " << normal1.z() << std::endl;
-            stlFile << "    outer loop" << std::endl;
-            stlFile << "      vertex " << p1.x() << " " << p1.y() << " " << p1.z() << std::endl;
-            stlFile << "      vertex " << p2.x() << " " << p2.y() << " " << p2.z() << std::endl;
-            stlFile << "      vertex " << p3.x() << " " << p3.y() << " " << p3.z() << std::endl;
-            stlFile << "    endloop" << std::endl;
-            stlFile << "  endfacet" << std::endl;
+	  // First triangle (p1, p2, p3) - Top-left, top-right, bottom-left
+	  vector normal1 = computeNormal(p1, p2, p3);
+	  stlFile << "  facet normal " << normal1.x() << " " << normal1.y() << " " << normal1.z() << std::endl;
+	  stlFile << "    outer loop" << std::endl;
+	  stlFile << "      vertex " << p1.x() << " " << p1.y() << " " << p1.z() << std::endl;
+	  stlFile << "      vertex " << p2.x() << " " << p2.y() << " " << p2.z() << std::endl;
+	  stlFile << "      vertex " << p3.x() << " " << p3.y() << " " << p3.z() << std::endl;
+	  stlFile << "    endloop" << std::endl;
+	  stlFile << "  endfacet" << std::endl;
 
-            // Second triangle (p2, p4, p3) - Top-right, bottom-right, bottom-left
-            vector normal2 = computeNormal(p2, p4, p3);
-            stlFile << "  facet normal " << normal2.x() << " " << normal2.y() << " " << normal2.z() << std::endl;
-            stlFile << "    outer loop" << std::endl;
-            stlFile << "      vertex " << p2.x() << " " << p2.y() << " " << p2.z() << std::endl;
-            stlFile << "      vertex " << p4.x() << " " << p4.y() << " " << p4.z() << std::endl;
-            stlFile << "      vertex " << p3.x() << " " << p3.y() << " " << p3.z() << std::endl;
-            stlFile << "    endloop" << std::endl;
-            stlFile << "  endfacet" << std::endl;
+	  // Second triangle (p2, p4, p3) - Top-right, bottom-right, bottom-left
+	  vector normal2 = computeNormal(p2, p4, p3);
+	  stlFile << "  facet normal " << normal2.x() << " " << normal2.y() << " " << normal2.z() << std::endl;
+	  stlFile << "    outer loop" << std::endl;
+	  stlFile << "      vertex " << p2.x() << " " << p2.y() << " " << p2.z() << std::endl;
+	  stlFile << "      vertex " << p4.x() << " " << p4.y() << " " << p4.z() << std::endl;
+	  stlFile << "      vertex " << p3.x() << " " << p3.y() << " " << p3.z() << std::endl;
+	  stlFile << "    endloop" << std::endl;
+	  stlFile << "  endfacet" << std::endl;
         }
     }
 
-    // Write STL file footer
-    stlFile << "endsolid topoSurface" << std::endl;
+  // Write STL file footer
+  stlFile << "endsolid topoSurface" << std::endl;
 
-    stlFile.close();
-    Info << "STL surface written to " << stlFileName << endl;
+  stlFile.close();
+  Info << "STL surface written to " << stlFileName << endl;
 }
 
 int main(int argc, char *argv[])
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
+#include "setRootCase.H"
+#include "createTime.H"
+#include "createMesh.H"
   
-    // Read the dictionary file (topoGridDict) from the "system" folder
-    IOdictionary topoDict
+  // Read the dictionary file (topoGridDict) from the "system" folder
+  IOdictionary topoDict
     (
-        IOobject
-        (
-            "topoGridDict",
-            runTime.system(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        )
-    );
+     IOobject
+     (
+      "topoGridDict",
+      runTime.system(),
+      mesh,
+      IOobject::MUST_READ,
+      IOobject::NO_WRITE
+      )
+     );
 
-    // Read the raster file name from the dictionary
-    const word rasterFile = topoDict.lookup<word>("rasterFile");
+  // Read the raster file name from the dictionary
+  const word rasterFile = topoDict.lookup<word>("rasterFile");
 
-    // Read the vent center coordinates from the dictionary
-    const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
-    const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
-    const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
-    const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
-    const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
-    const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
-    const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
+  // Read the vent center coordinates from the dictionary
+  const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
+  const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
+  const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
+  const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+  const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
+  const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
+  const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
 
-    // Output the file name to the terminal for verification
-    Info << "Raster file specified: " << rasterFile << endl;
+  // Output the file name to the terminal for verification
+  Info << "Raster file specified: " << rasterFile << endl;
 
-    // Read the ESRI ASCII Raster file
-    std::ifstream file(rasterFile);
+  // Read the ESRI ASCII Raster file
+  std::ifstream file(rasterFile);
     
-    if (!file.is_open()) 
+  if (!file.is_open()) 
     {
-        FatalErrorInFunction
-            << "Unable to open the raster file: " << rasterFile << exit(FatalError);
+      FatalErrorInFunction
+	<< "Unable to open the raster file: " << rasterFile << exit(FatalError);
     }
 
 
-    int ncols = 0, nrows = 0;
-    double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
-    double NODATA_value = -9999.0;
-    std::string line;
+  int ncols = 0, nrows = 0;
+  double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
+  double NODATA_value = -9999.0;
+  std::string line;
 
-    // Read the header
-    while (std::getline(file, line))
+  // Read the header
+  while (std::getline(file, line))
     {
-        std::istringstream iss(line);
-        std::string key;
-        iss >> key;
+      std::istringstream iss(line);
+      std::string key;
+      iss >> key;
 
-        if (key == "ncols")
-            iss >> ncols;
-        else if (key == "nrows")
-            iss >> nrows;
-        else if (key == "xllcorner" || key == "xllcenter")
-            iss >> xllcorner;
-        else if (key == "yllcorner" || key == "yllcenter")
-            iss >> yllcorner;
-        else if (key == "cellsize")
-            iss >> cellsize;
-        else if (key == "NODATA_value")
-            iss >> NODATA_value;
+      if (key == "ncols")
+	iss >> ncols;
+      else if (key == "nrows")
+	iss >> nrows;
+      else if (key == "xllcorner" || key == "xllcenter")
+	iss >> xllcorner;
+      else if (key == "yllcorner" || key == "yllcenter")
+	iss >> yllcorner;
+      else if (key == "cellsize")
+	iss >> cellsize;
+      else if (key == "NODATA_value")
+	iss >> NODATA_value;
 
-        if (key == "NODATA_value")
-            break;
+      if (key == "NODATA_value")
+	break;
     }
 
-    xllcorner -= xVent;
-    yllcorner -= yVent;
+  xllcorner -= xVent;
+  yllcorner -= yVent;
 
-    // Create a RectangularMatrix to store the elevation data
-    RectangularMatrix<double> elevation(nrows, ncols, 0.0);
+  // Create a RectangularMatrix to store the elevation data
+  RectangularMatrix<double> elevation(nrows, ncols, 0.0);
 
-    // Read the elevation data and store it in the RectangularMatrix
-    for (int i = 0; i < nrows; ++i)
+  // Read the elevation data and store it in the RectangularMatrix
+  for (int i = 0; i < nrows; ++i)
     {
-        std::getline(file, line);
-        std::istringstream iss(line);
+      std::getline(file, line);
+      std::istringstream iss(line);
 
-        for (int j = 0; j < ncols; ++j)
+      for (int j = 0; j < ncols; ++j)
         {
-            double value;
-            iss >> value;
+	  double value;
+	  iss >> value;
 
-            if (value == NODATA_value)
-                value = 0.0;  // Handle NODATA_value appropriately
+	  if (value == NODATA_value)
+	    value = 0.0;  // Handle NODATA_value appropriately
 
-            elevation(nrows-1-i, j) = value;
+	  elevation(nrows-1-i, j) = value;
         }
     }
 
-    if (saveSTL)
+  if (saveSTL)
     {
-        // Create the output STL file name based on the input raster file
-        word stlFileName(rasterFile);
-        stlFileName.replace(".asc", ".stl");
-        Info << "Saving STL file: " << stlFileName << endl;
+      // Create the output STL file name based on the input raster file
+      word stlFileName(rasterFile);
+      stlFileName.replace(".asc", ".stl");
+      Info << "Saving STL file: " << stlFileName << endl;
 
-        // Write the STL surface to a file
+      // Write the STL surface to a file
         
-        if (saveBinary)
+      if (saveBinary)
         {        
-            writeBinarySTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
+	  writeBinarySTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
         }
-        else
+      else
         {
-            writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);        
+	  writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);        
         }
-        Info << "Saving completed" << endl;
+      Info << "Saving completed" << endl;
 
     }
     
 
-    double maxTopo(max(elevation));
-    // double minTopo(max(elevation));
+  double maxTopo(max(elevation));
+  // double minTopo(max(elevation));
 
-    scalar zVert(maxTopo + dzVert);
+  scalar zVert(maxTopo + dzVert);
 
-    file.close();
+  file.close();
 
-    // Get times list
-    instantList Times = runTime.times();
+  // Get times list
+  instantList Times = runTime.times();
 
-    // skip "constant" time
-    for (label timeI = 1; timeI < Times.size(); ++timeI)
+  // skip "constant" time
+  for (label timeI = 1; timeI < Times.size(); ++timeI)
     {
-        runTime.setTime(Times[timeI], timeI);
+      runTime.setTime(Times[timeI], timeI);
 
-        Info<< "Time = " << runTime.userTimeName() << endl;
+      Info<< "Time = " << runTime.userTimeName() << endl;
 
-    scalar zMin = min(mesh.Cf().component(2)).value();
-    scalar zMax = max(mesh.Cf().component(2)).value();
+      scalar zMin = min(mesh.Cf().component(2)).value();
+      scalar zMax = max(mesh.Cf().component(2)).value();
     
-    Info << "zMin = " << zMin << endl;
-    Info << "zMax = " << zMax << endl;
+      Info << "zMin = " << zMin << endl;
+      Info << "zMax = " << zMax << endl;
     
-    scalar z2Rel(0.0);
-    scalar zNew(0.0);
+      scalar z2Rel(0.0);
+      scalar zNew(0.0);
 
-    pointField zeroPoints(mesh.points());
+      pointField zeroPoints(mesh.points());
 
-    pointField pDeform
-    (
-        0.0*zeroPoints
-    );
-
+      pointField pDeform
+	(
+	 0.0*zeroPoints
+	 );
+    }
   
 //---------------------------------------------------------------------------------------------
 
-    // Check if the patch name is provided as an argument
-    //    if (argc < 2)
-    // {
-    //    FatalErrorInFunction << "Usage: " << argv[0] << " patchName" << exit(FatalError);
-    //  }
+      // Define Patch name of interest
+      const word patchName = "bottom";  // Hardcode the patch for boundary of interest
 
-    // Get the patch name from command line arguments
-    //    const  word patchName(argv[1]);
+      // Manually find the patch by iterating through boundaryMesh
+      label patchID = -1;
+      forAll(mesh.boundaryMesh(), patchi)
+	{
+	  if (mesh.boundaryMesh()[patchi].name() == patchName)
+	    {
+	      patchID = patchi;
+	      break;
+	    }
+	}
 
-    //    const word patchName = "bottom";  // Hardcode the patch for boundary of interest
-
-    // Find the patch by manually searching for the name in the boundary mesh
-    //        label patchID = -1;
-	//        forAll(mesh.boundaryMesh(), patchi)
-	  //          {
-	    //      if (mesh.boundaryMesh()[patchi].name() == patchName)
-	//    	  {
-	    //          patchID = patchi;
-	  //          break;
-	  //    	  }
-      //    }
-
-	//        if (patchID == -1)
-	  //          {
-	    //    	        FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-		//    }
-
-    // Use fvBoundaryMesh to access the patch
-	//    const fvPatch& patch = mesh.boundary()[patchID];
-
-    const word patchName = "bottom";  // Hardcode the patch for boundary of interest
+      if (patchID == -1)
+	{
+	  FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
+	}
 
 
-    // Manually find the patch by iterating through boundaryMesh
-    label patchID = -1;
-    forAll(mesh.boundaryMesh(), patchi)
-      {
-	if (mesh.boundaryMesh()[patchi].name() == patchName)
-	  {
-	    patchID = patchi;
-	    break;
-	  }
-      }
-
-    if (patchID == -1)
-      {
-	FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-      }
+      // Access the patch
+      const fvPatch& patch = mesh.boundary()[patchID];
+      std::cout << "" << std::endl ;
+      std::cout << "patchName = " << patchName << std::endl ;
+      std::cout << "patchID = " << patchID << std::endl ;
+      std::cout << "" << std::endl ;
 
     
-    // Directly find the patch by name
-    //    label patchID = mesh.boundaryMesh().findPatchID(patchName);
+      // Loop through each face on the patch
+      forAll(patch, facei)
+	{
+	  const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
+	  const labelList& facePointsIndices = f;  // `face` class stores the point indices
 
-    //    if (patchID == -1)
-      //      {
-	//	FatalErrorInFunction << "Patch " << patchName << " not found in mesh." << exit(FatalError);
-	//     }
-
-    // Access the patch
-    const fvPatch& patch = mesh.boundary()[patchID];
-
-    std::cout << "" << std::endl ;
-    std::cout << "patchName = " << patchName << std::endl ;
-    std::cout << "patchID = " << patchID << std::endl ;
-    std::cout << "" << std::endl ;
-
-
-    
-    // Loop through each face on the patch
-    forAll(patch, facei)
-      {
-        const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
-        const labelList& facePointsIndices = f;  // `face` class stores the point indices
-
-        // Loop through each point index in the face
-        forAll(facePointsIndices, pointi)
-	  {
-            label pointIndex = facePointsIndices[pointi];
-	    Info << "pointIndex = " << pointIndex << endl;
+	  // Loop through each point index in the face
+	  forAll(facePointsIndices, pointi)
+	    {
+	      label pointIndex = facePointsIndices[pointi];
+	      Info << "pointIndex = " << pointIndex << endl;
 	    
-	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
+	      point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 
-	    Info << "pointP = " << pointP << endl;
-	    //	    std::cout << "pointP = ("
-	    //                       << pointP.x() << ", "
-	    //                       << pointP.y() << ", "
-	    //                       << pointP.z() << ")" << std::endl;
-             std::cout << "" << std::endl ;
+	      Info << "pointP = " << pointP << endl;
+	      //	    std::cout << "pointP = ("
+	      //                       << pointP.x() << ", "
+	      //                       << pointP.y() << ", "
+	      //                       << pointP.z() << ")" << std::endl;
+	      std::cout << "" << std::endl ;
 
 	    
-	    std::cout << "##--------------------------------------------------------------------##" << std::endl;	    
-	    std::cout << "##               ... Initializing avgNormal Vector...                 ##" << std::endl ;
-	    std::cout << "##--------------------------------------------------------------------##" << std::endl;
-	    std::cout << "" << std::endl ;
+	      std::cout << "##--------------------------------------------------------------------##" << std::endl;	    
+	      std::cout << "##               ... Initializing avgNormal Vector...                 ##" << std::endl ;
+	      std::cout << "##--------------------------------------------------------------------##" << std::endl;
+	      std::cout << "" << std::endl ;
 
-	    vector avgNormal(0, 0, 0); // To store the average normal vector
-	    std::cout << "                      Initial avgNormal = (" 
-		      << avgNormal.x() << ", " 
-		      << avgNormal.y() << ", " 
-		      << avgNormal.z() << ")" << std::endl;
-            std::cout << "" << std::endl ;
+	      vector avgNormal(0, 0, 0); // To store the average normal vector
+	      std::cout << "                      Initial avgNormal = (" 
+			<< avgNormal.x() << ", " 
+			<< avgNormal.y() << ", " 
+			<< avgNormal.z() << ")" << std::endl;
+	      std::cout << "" << std::endl ;
 
-	    int faceCount = 0;         // Count of faces containing point P
+	      int faceCount = 0;         // Count of faces containing point P
 
-	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
+	      std::cout << "Initialized faceCount = " << faceCount << std::endl ;
 	    
-            //  Loop over the faces of the patch
-	    forAll(patch.faceCells(), facej)
-	      {
-		const face& otherFace = mesh.faces()[patch.faceCells()[facej]];
-		const labelList& otherFacePoints = otherFace;
+	      //  Loop over the faces of the patch
+	      forAll(patch.faceCells(), facej)
+		{
+		  const face& otherFace = mesh.faces()[patch.faceCells()[facej]];
+		  const labelList& otherFacePoints = otherFace;
 
-		std::cout << "facej iterator = " << facej << std::endl ; 
-		std::cout << "" << std::endl ; 
-		Info << "otherFace = " << otherFace << endl;
-		Info << "otherFacePoints = " << otherFacePoints << endl;
+		  std::cout << "facej iterator = " << facej << std::endl ; 
+		  std::cout << "" << std::endl ; 
+		  Info << "otherFace = " << otherFace << endl;
+		  Info << "otherFacePoints = " << otherFacePoints << endl;
 		
-		//	std::cout << "otherFace = " << otherFace  << std::endl ;
-		// std::cout << "" << std::endl ;
+		  //	std::cout << "otherFace = " << otherFace  << std::endl ;
+		  // std::cout << "" << std::endl ;
 
 		
-                // Manually check if the face contains the point
-                bool containsPoint = false;
-		forAll(otherFacePoints, fp)
-		  {
-		    if (otherFacePoints[fp] == pointIndex)
-		      {
-			containsPoint = true;
-			break;
-		      }
-		  }
+		  // Manually check if the face contains the point
+		  bool containsPoint = false;
+		  forAll(otherFacePoints, fp)
+		    {
+		      if (otherFacePoints[fp] == pointIndex)
+			{
+			  containsPoint = true;
+			  break;
+			}
+		    }
 
-		if (containsPoint)
-		  {
-		    // This face contains point P, so we need to find the two connected points
-		    labelList facePoints = otherFace;
+		  if (containsPoint)
+		    {
+		      // This face contains point P, so we need to find the two connected points
+		      labelList facePoints = otherFace;
 
-		    //		    std::cout << "facePoints = " << facePoints  <<    std::endl ;
-		    std::cout << "" << std::endl ;
+		      //		    std::cout << "facePoints = " << facePoints  <<    std::endl ;
+		      std::cout << "" << std::endl ;
 		    
 		    
-		    // Find two points on the face connected to P
-		    label p1 = -1, p2 = -1;
-		    std::cout << "Initial p1 = " << p1 << std::endl ;
-		    std::cout << "Initial p2 = " << p2 <<  std::endl ;
-		    std::cout << "" << std::endl ;
+		      // Find two points on the face connected to P
+		      label p1 = -1, p2 = -1;
+		      std::cout << "Initial p1 = " << p1 << std::endl ;
+		      std::cout << "Initial p2 = " << p2 <<  std::endl ;
+		      std::cout << "" << std::endl ;
 
-		    Info << "facePoints = " << facePoints << endl; 
+		      Info << "facePoints = " << facePoints << endl; 
 		    
-		    for (int fp = 0; fp < facePoints.size(); ++fp)
-		      {
-			if (facePoints[fp] == pointIndex)
-			  {
-			    // The two neighboring points connected to P on this face
-			    p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
-			    p2 = facePoints[(fp + 1) % facePoints.size()];
+		      for (int fp = 0; fp < facePoints.size(); ++fp)
+			{
+			  if (facePoints[fp] == pointIndex)
+			    {
+			      // The two neighboring points connected to P on this face
+			      p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
+			      p2 = facePoints[(fp + 1) % facePoints.size()];
 
-			    std::cout << "New p1 = " << p1 << std::endl ;
-			    std::cout << "New p2 = " << p2 <<  std::endl ;    
-			    std::cout << "" << std::endl ;
+			      std::cout << "New p1 = " << p1 << std::endl ;
+			      std::cout << "New p2 = " << p2 <<  std::endl ;    
+			      std::cout << "" << std::endl ;
 
-			    break;
-			  }
-		      }
+			      break;
+			    }
+			}
 
-		    if (p1 == -1 || p2 == -1)
-		      {
-			FatalErrorInFunction << "Unable to find neighboring points for point " << pointIndex << exit(FatalError);
-		      }
+		      if (p1 == -1 || p2 == -1)
+			{
+			  FatalErrorInFunction << "Unable to find neighboring points for point " << pointIndex << exit(FatalError);
+			}
 
-		    // Points connected to point P
-		    point point1 = mesh.points()[p1];
-		    point point2 = mesh.points()[p2];
+		      // Points connected to point P
+		      point point1 = mesh.points()[p1];
+		      point point2 = mesh.points()[p2];
 
-		    Info << "coordinates for point1 = " << point1 << endl ;
-		    Info << "coordinates for  point2 = " << point2 <<  endl ;
-		    std::cout << "" << std::endl;
+		      Info << "coordinates for point1 = " << point1 << endl ;
+		      Info << "coordinates for  point2 = " << point2 <<  endl ;
+		      std::cout << "" << std::endl;
 
-		    // Compute vectors connecting point P with point1 and point2
-		    vector v1 = point1 - pointP;
-		    vector v2 = point2 - pointP;
+		      // Compute vectors connecting point P with point1 and point2
+		      vector v1 = point1 - pointP;
+		      vector v2 = point2 - pointP;
 
-		    // Compute the cross product of v1 and v2 to get the normal
-		    vector normal = v1 ^ v2;  // Use the ^ operator for cross product
+		      // Compute the cross product of v1 and v2 to get the normal
+		      vector normal = v1 ^ v2;  // Use the ^ operator for cross product
 
-		    Info << "v1 = " << v1 << endl ;
-    		    Info << "v2 = " << v2 << endl ;  
-		    Info << "normal = " << normal << endl;  
-		    std::cout << "" << std::endl;
-		    std::cout << "facecount = " << faceCount << std::endl;
-		    Info << "avgNormal" << avgNormal << endl;
-		    std::cout << "" << std::endl; 
+		      Info << "v1 = " << v1 << endl ;
+		      Info << "v2 = " << v2 << endl ;  
+		      Info << "normal = " << normal << endl;  
+		      std::cout << "" << std::endl;
+		      std::cout << "facecount = " << faceCount << std::endl;
+		      Info << "avgNormal" << avgNormal << endl;
+		      std::cout << "" << std::endl; 
 		    
-		    // Accumulate the normal vecto
-		    avgNormal += normal;
-		    faceCount++;
+		      // Accumulate the normal vecto
+		      avgNormal += normal;
+		      faceCount++;
 
-		    std::cout << "facecount + 1 = "	<< faceCount <<	std::endl;
-                    Info << "avgNormal+ "	<< avgNormal <<	endl;
+		      std::cout << "facecount + 1 = "	<< faceCount <<	std::endl;
+		      Info << "avgNormal+ "	<< avgNormal <<	endl;
 
 		 
 
 		
- //------------------------------------------------------------------------------------------------------------------------------
+		      //------------------------------------------------------------------------------------------------------------------------------
 
-	// Average the normal vector
-	if (faceCount > 0)
-	  {
-	    avgNormal /= faceCount;
+		      // Average the normal vector
+		      if (faceCount > 0)
+			{
+			  avgNormal /= faceCount;
 
-	    // Normalize the vector
-	    avgNormal /= mag(avgNormal);
+			  // Normalize the vector
+			  avgNormal /= mag(avgNormal);
 
-	    // Output the normalized average normal vector for point P
-	    std::cout << "Point " << pointIndex << " avgNormal = ("
-		      << avgNormal.x() << ", "
-		      << avgNormal.y() << ", "
-		      << avgNormal.z() << ")" << std::endl;
-	    std::cout << "" << std::endl ;
+			  // Output the normalized average normal vector for point P
+			  std::cout << "Point " << pointIndex << " avgNormal = ("
+				    << avgNormal.x() << ", "
+				    << avgNormal.y() << ", "
+				    << avgNormal.z() << ")" << std::endl;
+			  std::cout << "" << std::endl ;
 	    
-	    //	    std::cout << "Point " << pointIndex << " avg normal: " << avgNormal << std::endl;
-	    std::cout << "" << std::endl ; 
-	  }
-	else
-	  {
-	    Info << "Point " << pointIndex << " not found in any faces." << endl;
-	  }
+			  //	    std::cout << "Point " << pointIndex << " avg normal: " << avgNormal << std::endl;
+			  std::cout << "" << std::endl ; 
+			}
+		      else
+			{
+			  Info << "Point " << pointIndex << " not found in any faces." << endl;
+			}
 
 
-	// Loop over all cells in the mesh to interpolate elevation values
-	forAll(pDeform,pointi)
-	  {
-	    // Get x, y coordinates of the pointi
-	    scalar x = mesh.points()[pointi].x();
-	    scalar y = mesh.points()[pointi].y();
-	    scalar z = mesh.points()[pointi].z();
-	    //	    std::cout << "x = " << x << std::endl;
-	    //	    std::cout << "" << std::endl; 
+		      // Loop over all cells in the mesh to interpolate elevation values
+		      forAll(pDeform,pointi)
+			{
+			  // Get x, y coordinates of the pointi
+			  scalar x = mesh.points()[pointi].x();
+			  scalar y = mesh.points()[pointi].y();
+			  scalar z = mesh.points()[pointi].z();
+			  //	    std::cout << "x = " << x << std::endl;
+			  //	    std::cout << "" << std::endl; 
         
-	    scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
+			  scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
 
-	    // Calculate row and column indices in the elevation matrix
-	    int colIndex = (x - xllcorner) / cellsize;
-	    int rowIndex = (y - yllcorner) / cellsize;
+			  // Calculate row and column indices in the elevation matrix
+			  int colIndex = (x - xllcorner) / cellsize;
+			  int rowIndex = (y - yllcorner) / cellsize;
 
-	    // Interpolate elevation value
-	    if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-	      {
-		// Bilinear interpolation
-		scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
-		scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
+			  // Interpolate elevation value
+			  if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
+			    {
+			      // Bilinear interpolation
+			      scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
+			      scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
 
-		scalar v00 = elevation(rowIndex, colIndex);
-		scalar v01 = elevation(rowIndex, colIndex + 1);
-		scalar v10 = elevation(rowIndex + 1, colIndex);
-		scalar v11 = elevation(rowIndex + 1, colIndex + 1);
+			      scalar v00 = elevation(rowIndex, colIndex);
+			      scalar v01 = elevation(rowIndex, colIndex + 1);
+			      scalar v10 = elevation(rowIndex + 1, colIndex);
+			      scalar v11 = elevation(rowIndex + 1, colIndex + 1);
 
-		scalar zInterp = 
-		  v00 * (1 - xLerp) * (1 - yLerp) +
-		  v01 * xLerp * (1 - yLerp) +
-		  v10 * (1 - xLerp) * yLerp +
-		  v11 * xLerp * yLerp;
+			      scalar zInterp = 
+				v00 * (1 - xLerp) * (1 - yLerp) +
+				v01 * xLerp * (1 - yLerp) +
+				v10 * (1 - xLerp) * yLerp +
+				v11 * xLerp * yLerp;
 
-		// Assign interpolated value to the volScalarField U
-		pDeform[pointi].z() = zRel * zInterp;
+			      // Assign interpolated value to the volScalarField U
+			      pDeform[pointi].z() = zRel * zInterp;
                 
-		zNew = z + zRel * zInterp;
+			      zNew = z + zRel * zInterp;
                 
-		if ( z>= 0.0)
-		  {
-		    if (dzVert > 0)
-		      {
-			// enlarge from a fixed height above the maximum
-			// topography and the top, thus from an horizontal
-			// plane to the top
-			z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
-		      }
-		    else
-		      {
-			// enlarge from the topography to the top
-			z2Rel = (zNew - zInterp) / (zMax - zInterp);
-		      }
-		    z2Rel = std::pow(z2Rel,exp_shape);
+			      if ( z>= 0.0)
+				{
+				  if (dzVert > 0)
+				    {
+				      // enlarge from a fixed height above the maximum
+				      // topography and the top, thus from an horizontal
+				      // plane to the top
+				      z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+				    }
+				  else
+				    {
+				      // enlarge from the topography to the top
+				      z2Rel = (zNew - zInterp) / (zMax - zInterp);
+				    }
+				  z2Rel = std::pow(z2Rel,exp_shape);
                 
-		    pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
-		    pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
-		  }
-		else
-		  {
-		    pDeform[pointi].x() = 0.0;
-		    pDeform[pointi].y() = 0.0;
-		  }        
-	      }
-	    else
-	      {
-		// If outside the raster bounds, set to a default value (e.g., 0)
-		pDeform[pointi].z() = 0.0;
-		pDeform[pointi].x() = 0.0;
-		pDeform[pointi].y() = 0.0;
-	      }
-	  }
+				  pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
+				  pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
+				}
+			      else
+				{
+				  pDeform[pointi].x() = 0.0;
+				  pDeform[pointi].y() = 0.0;
+				}        
+			    }
+			  else
+			    {
+			      // If outside the raster bounds, set to a default value (e.g., 0)
+			      pDeform[pointi].z() = 0.0;
+			      pDeform[pointi].x() = 0.0;
+			      pDeform[pointi].y() = 0.0;
+			    }
+			}
            
     
-    pointField newPoints
-    (
-        zeroPoints + pDeform
-    );
+		      pointField newPoints
+			(
+			 zeroPoints + pDeform
+			 );
 
-    mesh.setPoints(newPoints);
-    mesh.write();
+		      mesh.setPoints(newPoints);
+		      mesh.write();
 
-    //    Info<< endl;
-    }
-	      }
+		      //    Info<< endl;
+		    }
+		}
 
 	      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
 	      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-	    //        << nl << endl;
+	      //        << nl << endl;
 
-	    //    Info<< "End\n" << endl;
+	      //    Info<< "End\n" << endl;
 
     
-	    //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
+	      //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
+	    }
 	}
-    }
-    }
-    return 0;
+
+  return 0;
 }
 
 
