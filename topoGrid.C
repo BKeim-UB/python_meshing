@@ -417,9 +417,10 @@ int main(int argc, char *argv[])
 
     std::cout << "" << std::endl ;
     std::cout << "patchName = " << patchName << std::endl ;
-    std::cout << "" << std::endl ;
     std::cout << "patchID = " << patchID << std::endl ;
     std::cout << "" << std::endl ;
+
+
     
     // Loop through each face on the patch
     forAll(patch, facei)
@@ -432,7 +433,6 @@ int main(int argc, char *argv[])
 	  {
             label pointIndex = facePointsIndices[pointi];
 	    Info << "pointIndex = " << pointIndex << endl;
-	    std::cout << "" << std::endl;
 	    
 	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 
@@ -444,12 +444,13 @@ int main(int argc, char *argv[])
              std::cout << "" << std::endl ;
 
 	    
-	    
-	    std::cout << "Initializing avgNormal Vector" << std::endl ;
+	    std::cout << "##--------------------------------------------------------------------##" << std::endl;	    
+	    std::cout << "##               ... Initializing avgNormal Vector...                 ##" << std::endl ;
+	    std::cout << "##--------------------------------------------------------------------##" << std::endl;
 	    std::cout << "" << std::endl ;
 
 	    vector avgNormal(0, 0, 0); // To store the average normal vector
-	    std::cout << "Initial avgNormal = (" 
+	    std::cout << "                      Initial avgNormal = (" 
 		      << avgNormal.x() << ", " 
 		      << avgNormal.y() << ", " 
 		      << avgNormal.z() << ")" << std::endl;
@@ -458,7 +459,6 @@ int main(int argc, char *argv[])
 	    int faceCount = 0;         // Count of faces containing point P
 
 	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
-	    std::cout << "" << std::endl ; 
 	    
             //  Loop over the faces of the patch
 	    forAll(patch.faceCells(), facej)
@@ -467,6 +467,7 @@ int main(int argc, char *argv[])
 		const labelList& otherFacePoints = otherFace;
 
 		std::cout << "facej iterator = " << facej << std::endl ; 
+		std::cout << "" << std::endl ; 
 		Info << "otherFace = " << otherFace << endl;
 		Info << "otherFacePoints = " << otherFacePoints << endl;
 		
@@ -496,9 +497,11 @@ int main(int argc, char *argv[])
 		    
 		    // Find two points on the face connected to P
 		    label p1 = -1, p2 = -1;
-		    std::cout << "p1 = " << p1 << std::endl ;
+		    std::cout << "Initial p1 = " << p1 << std::endl ;
+		    std::cout << "Initial p2 = " << p2 <<  std::endl ;
 		    std::cout << "" << std::endl ;
-		    std::cout << "p2 = " << p2 <<  std::endl ;
+
+		    Info << "facePoints = " << facePoints << endl; 
 		    
 		    for (int fp = 0; fp < facePoints.size(); ++fp)
 		      {
@@ -509,8 +512,8 @@ int main(int argc, char *argv[])
 			    p2 = facePoints[(fp + 1) % facePoints.size()];
 
 			    std::cout << "New p1 = " << p1 << std::endl ;
-			    std::cout << "" << std::endl ;
 			    std::cout << "New p2 = " << p2 <<  std::endl ;    
+			    std::cout << "" << std::endl ;
 
 			    break;
 			  }
@@ -525,24 +528,21 @@ int main(int argc, char *argv[])
 		    point point1 = mesh.points()[p1];
 		    point point2 = mesh.points()[p2];
 
-		    Info << "point1 = " << point1 << endl ;
-		    std::cout << "" << std::endl ;
-		    Info << "point2 = " << point2 <<  endl ;
+		    Info << "coordinates for point1 = " << point1 << endl ;
+		    Info << "coordinates for  point2 = " << point2 <<  endl ;
+		    std::cout << "" << std::endl;
 
-		    
 		    // Compute vectors connecting point P with point1 and point2
 		    vector v1 = point1 - pointP;
 		    vector v2 = point2 - pointP;
 
-		    Info << "v1 = " << v1 << endl ;  
-		    std::cout << "" << std::endl;
-		    Info << "v1 = " << v1 << endl ;
-		    
 		    // Compute the cross product of v1 and v2 to get the normal
 		    vector normal = v1 ^ v2;  // Use the ^ operator for cross product
-		    std::cout << "" << std::endl;
-		    Info << "normal = " << normal << endl;  
 
+		    Info << "v1 = " << v1 << endl ;
+    		    Info << "v2 = " << v2 << endl ;  
+		    Info << "normal = " << normal << endl;  
+		    std::cout << "" << std::endl;
 		    std::cout << "facecount = " << faceCount << std::endl;
 		    Info << "avgNormal" << avgNormal << endl;
 		    std::cout << "" << std::endl; 
@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
 		    std::cout << "facecount + 1 = "	<< faceCount <<	std::endl;
                     Info << "avgNormal+ "	<< avgNormal <<	endl;
 
-		  }
+		 
 
 		
  //------------------------------------------------------------------------------------------------------------------------------
@@ -667,6 +667,7 @@ int main(int argc, char *argv[])
 
     //    Info<< endl;
     }
+	      }
 
 	      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
 	      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
