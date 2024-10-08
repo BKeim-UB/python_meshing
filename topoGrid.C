@@ -391,152 +391,71 @@ int main(int argc, char *argv[])
     
     //+++
 
+ 	//GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT 
 
-   // Loop through each face on the patch  
-    forAll(patch, facei)
-      {
+	// Initialize an array to store normals for each point
+	Field<vector> pointNormals(mesh.nPoints(), vector::zero);
 
-	std::cout << "looping through each face on the patch" <<std::endl;
-	std::cout << "" << std::endl ; 
-	
-	const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
-        const labelList& facePointsIndices = f;  // `face` class stores the point indices
+	// Initialize an array to count the number of faces contributing to each point's normal
+	Field<label> pointFaceCount(mesh.nPoints(), 0);
 
-	//#################################   FIRST LOOP ################################################
-        // Loop through each point index in the face
-        forAll(facePointsIndices, pointi)
+	// Loop through each face on the patch
+	forAll(patch, facei)
 	  {
-            label pointIndex = facePointsIndices[pointi];
-	    Info << "pointIndex = " << pointIndex << endl;
-    
-	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
-	    Info << "pointP = " << pointP << endl;
 
-	    int faceCount = 0;         // Count of faces containing point P
+	    std::cout << "" << std::endl;
+	    std::cout << "--------------------------------" << std::endl; 
+	    std::cout << "Processing face: " << facei << std::endl;
 
-	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
-
-
-	    // #################### SECOND LOOP ###############################################
-            //  Loop over the faces of the patch
-	    forAll(patch.faceCells(), facej) // list of faces, iterator 
-	      {
-		const face& otherFace = mesh.faces()[patch.start() + facej];
-		const labelList& otherFacePoints = otherFace;
-
-		std::cout << "" << std::endl ;
-		std::cout << "-------------------------------------------" << std::endl ; 
-		std::cout << "Patch Start = " << patch.start() << std::endl ; 
-		std::cout << "Face index = " <<  patch.start() + facej << std::endl;  
-		std::cout << "facej iterator = " << facej << std::endl ; 
-		Info << "Adjacent Face = " << otherFace << endl;
-		Info << "Adjacent Points (otherFacePoints) = " << otherFacePoints << endl;
-		std::cout << "-------------------------------------------" << std::endl ; 
-		std::cout << "" << std::endl ;
-		
-                // Manually check if the face contains the point
-		bool containsPoint = false;
-		forAll(otherFacePoints, fp)
-		  {
-		    if (otherFacePoints[fp] == pointIndex)
-		      {
-			containsPoint = true;
-			break;
-		      }
-		  }
-
-		if (containsPoint)
-		  {
-		    // This face contains point P, so we need to find the two connected points
-		    labelList facePoints = otherFace;
-
-		    // Find two points on the face connected to P
-		    label p1 = -1, p2 = -1;
-		    // std::cout << "Initial p1 = " << p1 << std::endl ;
-		    //		    std::cout << "Initial p2 = " << p2 <<  std::endl ;
-		    //		    std::cout << "" << std::endl ;
-
-		    Info << "facePoints = " << facePoints << endl; 
-		    
-		    for (int fp = 0; fp < facePoints.size(); ++fp)
-		      {
-			if (facePoints[fp] == pointIndex)
-			  {
-			    // The two neighboring points connected to P on this face
-			    p1 = facePoints[(fp - 1 + facePoints.size()) % facePoints.size()];
-			    p2 = facePoints[(fp + 1) % facePoints.size()];
-
-			    std::cout << "New p1 = " << p1 << std::endl ;
-			    std::cout << "New p2 = " << p2 <<  std::endl ;    
-			    std::cout << "" << std::endl ;
-
-			    break;
-			  }
-		      }
-
-		    if (p1 == -1 || p2 == -1)
-		      {
-			FatalErrorInFunction << "Unable to find neighboring points for point " << pointIndex << exit(FatalError);
-		      }
-
-		    // Points connected to point P
-		    point point1 = mesh.points()[p1];
-		    point point2 = mesh.points()[p2];
-
-		    Info << "p1 = " << p1 << endl; 
-		    Info << "coordinates for point1 = " << point1 << endl ;
-		    Info << "coordinates for  point2 = " << point2 <<  endl ;
-		    std::cout << "" << std::endl;
-
-		    // Compute vectors connecting point P with point1 and point2
-		    vector v1 = point1 - pointP;
-		    vector v2 = point2 - pointP;
-
-		    // Compute the cross product of v1 and v2 to get the normal
-		    vector normal = v1 ^ v2;  // Use the ^ operator for cross product
-
-		    Info << "v1 = " << v1 << endl ;
-    		    Info << "v2 = " << v2 << endl ;  
-		    Info << "normal = " << normal << endl;  
-		    std::cout << "" << std::endl;
-		    std::cout << "facecount = " << faceCount << std::endl;
-		    Info << "avgNormal" << avgNormal << endl;
-		    std::cout << "" << std::endl; 
-		    
-		    // Accumulate the normal vecto
-		    avgNormal += normal;
-		    faceCount++;
-
-		    std::cout << "facecount + 1 = "	<< faceCount <<	std::endl;
-                    Info << "avgNormal+ "	<< avgNormal <<	endl;
-
-		 
-		    
-		
- //------------------------------------------------------------------------------------------------------------------------------
-
-	// Average the normal vector
-	if (faceCount > 0)
-	  {
-	    avgNormal /= faceCount;
-
-	    // Normalize the vector
-	    avgNormal /= mag(avgNormal);
-
-	    // Output the normalized average normal vector for point P
-	    std::cout << "Point " << pointIndex << " avgNormal = ("
-		      << avgNormal.x() << ", "
-		      << avgNormal.y() << ", "
-		      << avgNormal.z() << ")" << std::endl;
-	    std::cout << "" << std::endl ;
 	    
+	    const face& f = mesh.faces()[patch.start() + facei];  // Access the face directly from the patch
+	    const labelList& facePointsIndices = f;  // Get the point indices for the current face
+
+	    // Ensure the face has exactly 4 points (for quad faces)
+	    if (facePointsIndices.size() != 4)
+	      {
+		FatalErrorInFunction << "Expected a face with 4 points, but got " << facePointsIndices.size() << exit(FatalError);
+	      }
+
+	    // Loop through the 4 points of the face to calculate the normal
+	    for (int pointi = 0; pointi < facePointsIndices.size(); ++pointi)
+	      {
+		label pointIndex = facePointsIndices[pointi];  // Get the index of the point
+		point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
+
+		// Find two other points on the face connected to point P (adjacent points on the face)
+		label p1 = facePointsIndices[(pointi + 1) % 4];  // Next point
+		label p2 = facePointsIndices[(pointi + 3) % 4];  // Previous point
+
+		point point1 = mesh.points()[p1];
+		point point2 = mesh.points()[p2];
+
+		// Compute vectors connecting point P with point1 and point2
+		vector v1 = point1 - pointP;
+		vector v2 = point2 - pointP;
+
+		// Compute the cross product of v1 and v2 to get the normal
+		vector normal = v1 ^ v2;
+
+		// Accumulate the normal for this point
+		pointNormals[pointIndex] += normal;
+		pointFaceCount[pointIndex]++;  // Increase the face count for averaging
+
+		Info << "Point " << pointIndex << ": accumulated normal = " << pointNormals[pointIndex] << ", face count = " << pointFaceCount[pointIndex] << endl;
+	      }
 	  }
-	else
+
+	// After the loop, compute the average normal for each point by dividing by the face count
+	forAll(patch.faceCells(), pointIndex) //pointNormals
 	  {
-	    Info << "Point " << pointIndex << " not found in any faces." << endl;
+	    if (pointFaceCount[pointIndex] > 0)
+	      {
+		pointNormals[pointIndex] /= pointFaceCount[pointIndex];  // Compute the average normal
+	      }
+	    	    Info << "Final average normal for point " << pointIndex << " = " << pointNormals[pointIndex] << endl;
 	  }
-	
-	//		  } //recently added
+	// GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT  GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT 
+
 	// Loop over all cells in the mesh to interpolate elevation values
 	forAll(pDeform,pointi)
 	  {
@@ -609,7 +528,6 @@ int main(int argc, char *argv[])
 		pDeform[pointi].y() = 0.0;
 	      }
 	  }
-	 } // new add 
     
     pointField newPoints
     (
@@ -619,20 +537,12 @@ int main(int argc, char *argv[])
 		//    mesh.setPoints(newPoints);
 		//    mesh.write();
 
-    //    Info<< endl;
-    }
-	      }
-
-	      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-	      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-	    //        << nl << endl;
-
-	    //    Info<< "End\n" << endl;
-
-    
-	    //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
-	}
-    // } deleted here 
+      //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
+      //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+      //        << nl << endl;
+      //    Info<< "End\n" << endl;
+      //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
+	
     }
     return 0;
 }
