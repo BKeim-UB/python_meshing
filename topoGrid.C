@@ -353,9 +353,9 @@ int main(int argc, char *argv[])
   
 //---------------------------------------------------------------------------------------------
 
-    const word patchName = "bottom";  // Hardcode the patch for boundary of interest
+    const word patchName = "bottom";  // Hardcode the patchName for boundary of interest
 
-    // Manually find the patch by iterating through boundaryMesh
+    // Find the ID# associated with the patchName by iterating through boundaryMesh
     label patchID = -1;
     forAll(mesh.boundaryMesh(), patchi)
       {
@@ -388,13 +388,8 @@ int main(int argc, char *argv[])
 					      << avgNormal.y() << ", "
 					      << avgNormal.z() << ")" << std::endl;
     std::cout << "" << std::endl ;
-
-
-
+    
     //+++
-
-
-
 
 
    // Loop through each face on the patch  
@@ -412,7 +407,7 @@ int main(int argc, char *argv[])
 	  {
             label pointIndex = facePointsIndices[pointi];
 	    Info << "pointIndex = " << pointIndex << endl;
-	    
+    
 	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 	    Info << "pointP = " << pointP << endl;
 
@@ -421,7 +416,7 @@ int main(int argc, char *argv[])
 	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
 	    
             //  Loop over the faces of the patch
-	    forAll(patch.faceCells(), facej)
+	    forAll(patch.faceCells(), facej) // list of faces, iterator 
 	      {
 		const face& otherFace = mesh.faces()[patch.start() + facej];
 		const labelList& otherFacePoints = otherFace;
@@ -431,8 +426,8 @@ int main(int argc, char *argv[])
 		std::cout << "Patch Start = " << patch.start() << std::endl ; 
 		std::cout << "Face index = " <<  patch.start() + facej << std::endl;  
 		std::cout << "facej iterator = " << facej << std::endl ; 
-		Info << "otherFace = " << otherFace << endl;
-		Info << "otherFacePoints = " << otherFacePoints << endl;
+		Info << "Adjacent Face = " << otherFace << endl;
+		Info << "Adjacent Points (otherFacePoints) = " << otherFacePoints << endl;
 		std::cout << "-------------------------------------------" << std::endl ; 
 		std::cout << "" << std::endl ;
 		
@@ -452,15 +447,11 @@ int main(int argc, char *argv[])
 		    // This face contains point P, so we need to find the two connected points
 		    labelList facePoints = otherFace;
 
-		    //		    std::cout << "facePoints = " << facePoints  <<    std::endl ;
-		    std::cout << "" << std::endl ;
-		    
-		    
 		    // Find two points on the face connected to P
 		    label p1 = -1, p2 = -1;
-		    std::cout << "Initial p1 = " << p1 << std::endl ;
-		    std::cout << "Initial p2 = " << p2 <<  std::endl ;
-		    std::cout << "" << std::endl ;
+		    // std::cout << "Initial p1 = " << p1 << std::endl ;
+		    //		    std::cout << "Initial p2 = " << p2 <<  std::endl ;
+		    //		    std::cout << "" << std::endl ;
 
 		    Info << "facePoints = " << facePoints << endl; 
 		    
@@ -488,7 +479,6 @@ int main(int argc, char *argv[])
 		    // Points connected to point P
 		    point point1 = mesh.points()[p1];
 		    point point2 = mesh.points()[p2];
-
 
 		    Info << "p1 = " << p1 << endl; 
 		    Info << "coordinates for point1 = " << point1 << endl ;
