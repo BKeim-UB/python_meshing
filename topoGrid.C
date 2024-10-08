@@ -402,6 +402,7 @@ int main(int argc, char *argv[])
 	const face& f = mesh.faces()[patch.faceCells()[facei]];  // Access the face from the faceCells()
         const labelList& facePointsIndices = f;  // `face` class stores the point indices
 
+	//#################################   FIRST LOOP ################################################
         // Loop through each point index in the face
         forAll(facePointsIndices, pointi)
 	  {
@@ -414,7 +415,9 @@ int main(int argc, char *argv[])
 	    int faceCount = 0;         // Count of faces containing point P
 
 	    std::cout << "Initialized faceCount = " << faceCount << std::endl ;
-	    
+
+
+	    // #################### SECOND LOOP ###############################################
             //  Loop over the faces of the patch
 	    forAll(patch.faceCells(), facej) // list of faces, iterator 
 	      {
