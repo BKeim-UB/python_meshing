@@ -201,156 +201,233 @@ void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevatio
 
 int main(int argc, char *argv[])
 {
-    #include "setRootCase.H"
-    #include "createTime.H"
-    #include "createMesh.H"
+#include "setRootCase.H"
+#include "createTime.H"
+#include "createMesh.H"
   
-    // Read the dictionary file (topoGridDict) from the "system" folder
-    IOdictionary topoDict
+  // Read the dictionary file (topoGridDict) from the "system" folder
+  IOdictionary topoDict
     (
-        IOobject
-        (
-            "topoGridDict",
-            runTime.system(),
-            mesh,
-            IOobject::MUST_READ,
-            IOobject::NO_WRITE
-        )
-    );
+     IOobject
+     (
+      "topoGridDict",
+      runTime.system(),
+      mesh,
+      IOobject::MUST_READ,
+      IOobject::NO_WRITE
+      )
+     );
 
-    // Read the raster file name from the dictionary
-    const word rasterFile = topoDict.lookup<word>("rasterFile");
+  // Read the raster file name from the dictionary
+  const word rasterFile = topoDict.lookup<word>("rasterFile");
 
-    // Read the vent center coordinates from the dictionary
-    const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
-    const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
-    const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
-    const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
-    const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
-    const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
-    const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
+  // Read the vent center coordinates from the dictionary
+  const scalar xVent = topoDict.lookupOrDefault<scalar>("xVent",0.0);
+  const scalar yVent = topoDict.lookupOrDefault<scalar>("yVent",0.0);
+  const scalar expFactor = topoDict.lookupOrDefault<scalar>("expFactor",1.0);
+  const scalar dzVert = topoDict.lookupOrDefault<scalar>("dzVert",0.0);
+  const scalar exp_shape = topoDict.lookupOrDefault<scalar>("exp_shape",1.0);
+  const Switch saveSTL = topoDict.lookupOrDefault<Switch>("saveSTL", false);
+  const Switch saveBinary = topoDict.lookupOrDefault<Switch>("saveBinary", false);
 
-    // Output the file name to the terminal for verification
-    Info << "Raster file specified: " << rasterFile << endl;
+  // Output the file name to the terminal for verification
+  Info << "Raster file specified: " << rasterFile << endl;
 
-    // Read the ESRI ASCII Raster file
-    std::ifstream file(rasterFile);
+  // Read the ESRI ASCII Raster file
+  std::ifstream file(rasterFile);
     
-    if (!file.is_open()) 
+  if (!file.is_open()) 
     {
-        FatalErrorInFunction
-            << "Unable to open the raster file: " << rasterFile << exit(FatalError);
+      FatalErrorInFunction
+	<< "Unable to open the raster file: " << rasterFile << exit(FatalError);
     }
 
 
-    int ncols = 0, nrows = 0;
-    double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
-    double NODATA_value = -9999.0;
-    std::string line;
+  int ncols = 0, nrows = 0;
+  double xllcorner = 0.0, yllcorner = 0.0, cellsize = 0.0;
+  double NODATA_value = -9999.0;
+  std::string line;
 
-    // Read the header
-    while (std::getline(file, line))
+  // Read the header
+  while (std::getline(file, line))
     {
-        std::istringstream iss(line);
-        std::string key;
-        iss >> key;
+      std::istringstream iss(line);
+      std::string key;
+      iss >> key;
 
-        if (key == "ncols")
-            iss >> ncols;
-        else if (key == "nrows")
-            iss >> nrows;
-        else if (key == "xllcorner" || key == "xllcenter")
-            iss >> xllcorner;
-        else if (key == "yllcorner" || key == "yllcenter")
-            iss >> yllcorner;
-        else if (key == "cellsize")
-            iss >> cellsize;
-        else if (key == "NODATA_value")
-            iss >> NODATA_value;
-        if (key == "NODATA_value")
-            break;
+      if (key == "ncols")
+	iss >> ncols;
+      else if (key == "nrows")
+	iss >> nrows;
+      else if (key == "xllcorner" || key == "xllcenter")
+	iss >> xllcorner;
+      else if (key == "yllcorner" || key == "yllcenter")
+	iss >> yllcorner;
+      else if (key == "cellsize")
+	iss >> cellsize;
+      else if (key == "NODATA_value")
+	iss >> NODATA_value;
+      if (key == "NODATA_value")
+	break;
     }
 
-    xllcorner -= xVent;
-    yllcorner -= yVent;
+  xllcorner -= xVent;
+  yllcorner -= yVent;
 
-    // Create a RectangularMatrix to store the elevation data
-    RectangularMatrix<double> elevation(nrows, ncols, 0.0);
+  // Create a RectangularMatrix to store the elevation data
+  RectangularMatrix<double> elevation(nrows, ncols, 0.0);
 
-    // Read the elevation data and store it in the RectangularMatrix
-    for (int i = 0; i < nrows; ++i)
+  // Read the elevation data and store it in the RectangularMatrix
+  for (int i = 0; i < nrows; ++i)
     {
-        std::getline(file, line);
-        std::istringstream iss(line);
+      std::getline(file, line);
+      std::istringstream iss(line);
 
-        for (int j = 0; j < ncols; ++j)
+      for (int j = 0; j < ncols; ++j)
         {
-            double value;
-            iss >> value;
+	  double value;
+	  iss >> value;
 
-            if (value == NODATA_value)
-                value = 0.0;  // Handle NODATA_value appropriately
+	  if (value == NODATA_value)
+	    value = 0.0;  // Handle NODATA_value appropriately
 
-            elevation(nrows-1-i, j) = value;
+	  elevation(nrows-1-i, j) = value;
         }
     }
 
-    if (saveSTL)
+  if (saveSTL)
     {
-        // Create the output STL file name based on the input raster file
-        word stlFileName(rasterFile);
-        stlFileName.replace(".asc", ".stl");
-        Info << "Saving STL file: " << stlFileName << endl;
+      // Create the output STL file name based on the input raster file
+      word stlFileName(rasterFile);
+      stlFileName.replace(".asc", ".stl");
+      Info << "Saving STL file: " << stlFileName << endl;
 
-        // Write the STL surface to a file
+      // Write the STL surface to a file
         
-        if (saveBinary)
+      if (saveBinary)
         {        
-            writeBinarySTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
+	  writeBinarySTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);
         }
-        else
+      else
         {
-            writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);        
+	  writeSTL(stlFileName, elevation, xllcorner, yllcorner, cellsize);        
         }
-        Info << "Saving completed" << endl;
+      Info << "Saving completed" << endl;
 
     }
     
 
-    double maxTopo(max(elevation));
-    // double minTopo(max(elevation));
+  double maxTopo(max(elevation));
+  // double minTopo(max(elevation));
 
-    scalar zVert(maxTopo + dzVert);
+  scalar zVert(maxTopo + dzVert);
 
-    file.close();
+  file.close();
 
-    // Get times list
-    instantList Times = runTime.times();
+  // Get times list
+  instantList Times = runTime.times();
 
-    // skip "constant" time
-    for (label timeI = 1; timeI < Times.size(); ++timeI)
+  // skip "constant" time
+  for (label timeI = 1; timeI < Times.size(); ++timeI)
     {
-        runTime.setTime(Times[timeI], timeI);
+      runTime.setTime(Times[timeI], timeI);
 
-        Info<< "Time = " << runTime.userTimeName() << endl;
+      Info<< "Time = " << runTime.userTimeName() << endl;
 
-    scalar zMin = min(mesh.Cf().component(2)).value();
-    scalar zMax = max(mesh.Cf().component(2)).value();
+      scalar zMin = min(mesh.Cf().component(2)).value();
+      scalar zMax = max(mesh.Cf().component(2)).value();
     
-    Info << "zMin = " << zMin << endl;
-    Info << "zMax = " << zMax << endl;
+      Info << "zMin = " << zMin << endl;
+      Info << "zMax = " << zMax << endl;
     
-    scalar z2Rel(0.0);
-    scalar zNew(0.0);
+      scalar z2Rel(0.0);
+      scalar zNew(0.0);
 
-    pointField zeroPoints(mesh.points());
+      pointField zeroPoints(mesh.points());
 
-    pointField pDeform
-    (
-        0.0*zeroPoints
-    );
+      pointField pDeform
+	(
+	 0.0*zeroPoints
+	 );
 
-  
+    
+      // Loop over all cells in the mesh to interpolate elevation values
+      forAll(pDeform,pointi)
+	{
+	  // Get x, y coordinates of the pointi
+	  scalar x = mesh.points()[pointi].x(); 
+	  scalar y = mesh.points()[pointi].y();
+	  scalar z = mesh.points()[pointi].z();
+
+	  scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
+
+	  // Calculate row and column indices in the elevation matrix
+	  int colIndex = (x - xllcorner) / cellsize;
+	  int rowIndex = (y - yllcorner) / cellsize;
+
+	  // Interpolate elevation value
+	  if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
+	    {
+	      // Bilinear interpolation
+	      scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
+	      scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
+
+	      scalar v00 = elevation(rowIndex, colIndex);
+	      scalar v01 = elevation(rowIndex, colIndex + 1);
+	      scalar v10 = elevation(rowIndex + 1, colIndex);
+	      scalar v11 = elevation(rowIndex + 1, colIndex + 1);
+
+	      scalar zInterp = 
+		v00 * (1 - xLerp) * (1 - yLerp) +
+		v01 * xLerp * (1 - yLerp) +
+		v10 * (1 - xLerp) * yLerp +
+		v11 * xLerp * yLerp;
+
+	      pDeform[pointi].z() = zRel * zInterp; // Assign interpolated value to the volScalarField U
+
+                
+	      zNew = z + zRel * zInterp;
+                
+	      if ( z>= 0.0)
+		{
+		  if (dzVert > 0)
+		    {
+		      // enlarge from a fixed height above the maximum topography and the top
+		      z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
+		    }
+		  else
+		    {
+		      z2Rel = (zNew - zInterp) / (zMax - zInterp);  // enlarge from the topography to the top
+
+		    }
+		  z2Rel = std::pow(z2Rel,exp_shape);
+                
+		  pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
+		  pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
+		}
+	      else
+		{
+		  pDeform[pointi].x() = 0.0;
+		  pDeform[pointi].y() = 0.0;
+		}        
+	    }
+	  else
+	    {
+	      pDeform[pointi].z() = 0.0;  // If outside the raster bounds, set to a default value (e.g., 0)
+	      pDeform[pointi].x() = 0.0;
+	      pDeform[pointi].y() = 0.0;
+	    }
+	} // closes pDeform Loop
+    
+      pointField newPoints
+	(
+	 zeroPoints + pDeform
+	 );
+
+      mesh.setPoints(newPoints);
+      mesh.write();
+
+
 //---------------------------------------------------------------------------------------------
 
     const word patchName = "bottom";  // Hardcode the patchName for boundary of interest
@@ -379,173 +456,90 @@ int main(int argc, char *argv[])
     std::cout << "patchID = " << patchID << std::endl ;
     std::cout << "" << std::endl ;
 
-
-    //+++++++++++++++++++++++++++++++++++
-
-    vector avgNormal(0, 0, 0); // To store the average normal vector                                                                  
-				    std::cout << "Initial avgNormal = ("
-					      << avgNormal.x() << ", "
-					      << avgNormal.y() << ", "
-					      << avgNormal.z() << ")" << std::endl;
+    vector avgNormal(0, 0, 0); // To store the average normal vector
+    std::cout << "Initial avgNormal = ("  << avgNormal.x() << ", " << avgNormal.y() << ", " << avgNormal.z() << ")" << std::endl;
     std::cout << "" << std::endl ;
     
-    //+++
+    // Initialize an array to store normals for each point
+    Field<vector> pointNormals(mesh.nPoints(), vector::zero);
 
- 	//GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT 
+    // Initialize an array to count the number of faces contributing to each point's normal
+    Field<label> pointFaceCount(mesh.nPoints(), 0);
 
-	// Initialize an array to store normals for each point
-	Field<vector> pointNormals(mesh.nPoints(), vector::zero);
-
-	// Initialize an array to count the number of faces contributing to each point's normal
-	Field<label> pointFaceCount(mesh.nPoints(), 0);
-
-	// Loop through each face on the patch
-	forAll(patch, facei)
-	  {
-
-	    std::cout << "" << std::endl;
-	    std::cout << "--------------------------------" << std::endl; 
-	    std::cout << "Processing face: " << facei << std::endl;
+    // Loop through each face on the patch
+    forAll(patch, facei)
+      {
+	std::cout << "" << std::endl;
+	std::cout << "--------------------------------" << std::endl; 
+	std::cout << "Processing face: " << facei << std::endl;
 
 	    
-	    const face& f = mesh.faces()[patch.start() + facei];  // Access the face directly from the patch
-	    const labelList& facePointsIndices = f;  // Get the point indices for the current face
+	const face& f = mesh.faces()[patch.start() + facei];  // Access the face directly from the patch
+	const labelList& facePointsIndices = f;  // Get the point indices for the current face
 
-	    // Ensure the face has exactly 4 points (for quad faces)
-	    if (facePointsIndices.size() != 4)
-	      {
-		FatalErrorInFunction << "Expected a face with 4 points, but got " << facePointsIndices.size() << exit(FatalError);
-	      }
-
-	    // Loop through the 4 points of the face to calculate the normal
-	    for (int pointi = 0; pointi < facePointsIndices.size(); ++pointi)
-	      {
-		label pointIndex = facePointsIndices[pointi];  // Get the index of the point
-		point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
-
-		// Find two other points on the face connected to point P (adjacent points on the face)
-		label p1 = facePointsIndices[(pointi + 1) % 4];  // Next point
-		label p2 = facePointsIndices[(pointi + 3) % 4];  // Previous point
-
-		point point1 = mesh.points()[p1];
-		point point2 = mesh.points()[p2];
-
-		// Compute vectors connecting point P with point1 and point2
-		vector v1 = point1 - pointP;
-		vector v2 = point2 - pointP;
-
-		// Compute the cross product of v1 and v2 to get the normal
-		vector normal = v1 ^ v2;
-
-		// Accumulate the normal for this point
-		pointNormals[pointIndex] += normal;
-		pointFaceCount[pointIndex]++;  // Increase the face count for averaging
-
-		Info << "Point " << pointIndex << ": accumulated normal = " << pointNormals[pointIndex] << ", face count = " << pointFaceCount[pointIndex] << endl;
-	      }
-	  }
-
-	// After the loop, compute the average normal for each point by dividing by the face count
-	forAll(patch.faceCells(), pointIndex) //pointNormals
+	// Ensure the face has exactly 4 points (for quad faces)
+	if (facePointsIndices.size() != 4)
 	  {
-	    if (pointFaceCount[pointIndex] > 0)
-	      {
-		pointNormals[pointIndex] /= pointFaceCount[pointIndex];  // Compute the average normal
-	      }
-	    	    Info << "Final average normal for point " << pointIndex << " = " << pointNormals[pointIndex] << endl;
+	    FatalErrorInFunction << "Expected a face with 4 points, but got " << facePointsIndices.size() << exit(FatalError);
 	  }
-	// GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT  GPT GPT GPT GPT GPT GPT GPT GPT GPT GPT 
 
-	// Loop over all cells in the mesh to interpolate elevation values
-	forAll(pDeform,pointi)
+	// Loop through the 4 points of the face to calculate the normal
+	for (int pointi = 0; pointi < facePointsIndices.size(); ++pointi)
 	  {
-	    // Get x, y coordinates of the pointi
-	    scalar x = mesh.points()[pointi].x();
-	    scalar y = mesh.points()[pointi].y();
-	    scalar z = mesh.points()[pointi].z();
-	    //	    std::cout << "x = " << x << std::endl;
-	    //	    std::cout << "" << std::endl; 
-        
-	    scalar zRel = min(1.0, (zMax-z)/(zMax-zMin));
+	    label pointIndex = facePointsIndices[pointi];  // Get the index of the point
+	    point pointP = mesh.points()[pointIndex];  // Access the actual point using the point index
 
-	    // Calculate row and column indices in the elevation matrix
-	    int colIndex = (x - xllcorner) / cellsize;
-	    int rowIndex = (y - yllcorner) / cellsize;
+	    // Find two other points on the face connected to point P (adjacent points on the face)
+	    label p1 = facePointsIndices[(pointi + 1) % 4];  // Next point
+	    label p2 = facePointsIndices[(pointi + 3) % 4];  // Previous point
 
-	    // Interpolate elevation value
-	    if (colIndex >= 0 && colIndex <= ncols  && rowIndex >= 0 && rowIndex <= nrows )
-	      {
-		// Bilinear interpolation
-		scalar xLerp = (x - (xllcorner + colIndex * cellsize)) / cellsize;
-		scalar yLerp = (y - (yllcorner + rowIndex * cellsize)) / cellsize;
+	    point point1 = mesh.points()[p1];
+	    point point2 = mesh.points()[p2];
 
-		scalar v00 = elevation(rowIndex, colIndex);
-		scalar v01 = elevation(rowIndex, colIndex + 1);
-		scalar v10 = elevation(rowIndex + 1, colIndex);
-		scalar v11 = elevation(rowIndex + 1, colIndex + 1);
+	    // Compute vectors connecting point P with point1 and point2
+	    vector v1 = point1 - pointP;
+	    vector v2 = point2 - pointP;
 
-		scalar zInterp = 
-		  v00 * (1 - xLerp) * (1 - yLerp) +
-		  v01 * xLerp * (1 - yLerp) +
-		  v10 * (1 - xLerp) * yLerp +
-		  v11 * xLerp * yLerp;
+	    // Compute the cross product of v1 and v2 to get the normal
+	    vector normal = v1 ^ v2;
 
-		// Assign interpolated value to the volScalarField U
-		pDeform[pointi].z() = zRel * zInterp;
-                
-		zNew = z + zRel * zInterp;
-                
-		if ( z>= 0.0)
-		  {
-		    if (dzVert > 0)
-		      {
-			// enlarge from a fixed height above the maximum
-			// topography and the top, thus from an horizontal
-			// plane to the top
-			z2Rel = max(0, (zNew - zVert) / (zMax - zVert));
-		      }
-		    else
-		      {
-			// enlarge from the topography to the top
-			z2Rel = (zNew - zInterp) / (zMax - zInterp);
-		      }
-		    z2Rel = std::pow(z2Rel,exp_shape);
-                
-		    pDeform[pointi].x() = z2Rel*(expFactor-1.0)*x;
-		    pDeform[pointi].y() = z2Rel*(expFactor-1.0)*y;
-		  }
-		else
-		  {
-		    pDeform[pointi].x() = 0.0;
-		    pDeform[pointi].y() = 0.0;
-		  }        
-	      }
-	    else
-	      {
-		// If outside the raster bounds, set to a default value (e.g., 0)
-		pDeform[pointi].z() = 0.0;
-		pDeform[pointi].x() = 0.0;
-		pDeform[pointi].y() = 0.0;
-	      }
+	    // Accumulate the normal for this point
+	    pointNormals[pointIndex] += normal;
+	    pointFaceCount[pointIndex]++;  // Increase the face count for averaging
+
+	    Info << "Point " << pointIndex << ": accumulated normal = " << pointNormals[pointIndex]
+		 << ", face count = " << pointFaceCount[pointIndex] << endl;
 	  }
+      }
+
+    std::cout << "" << std::endl; 
     
-    pointField newPoints
-    (
-        zeroPoints + pDeform
-    );
+    // After the loop, compute the average normal for each point by dividing by the face count
+    forAll(patch.faceCells(), pointIndex) //pointNormals
+      {
+	if (pointFaceCount[pointIndex] > 0)
+	  {
+	    pointNormals[pointIndex] /= pointFaceCount[pointIndex];  // Compute the average normal
 
-		//    mesh.setPoints(newPoints);
-		//    mesh.write();
+    	    // Normalize the vector
+	    // eg., avgNormal /= mag(avgNormal);
+	    pointNormals[pointIndex] /= mag(pointNormals[pointIndex]);
 
+	  }
+	Info << "Final average normal for point " << pointIndex << " = " << pointNormals[pointIndex] << endl;
+      }
+
+//-------------------------------------------------------------------------------------------------------------------
+    
       //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
       //        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
       //        << nl << endl;
       //    Info<< "End\n" << endl;
       //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
 	
-    }
+    } // closes skip constant time 
     return 0;
-}
+} // closes int main()
 
 
 // ************************************************************************* //
