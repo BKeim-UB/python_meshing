@@ -199,6 +199,164 @@ void writeSTL(const word& stlFileName, const RectangularMatrix<scalar>& elevatio
     Info << "STL surface written to " << stlFileName << endl;
 }
 
+
+//---------------------------------------------------------------
+// Function for inverse distance interpolation
+vector inverseDistanceInterpolation(const point& internalPoint, const List<point>& boundaryPoints, const List<vector>& boundaryNormals)
+{
+    scalar Ldef = 1.5;
+    scalar alpha = 0.25;
+    scalar a = 3;
+    scalar b = 5;
+
+    // Initialize weights and distance array
+    List<scalar> distances(boundaryPoints.size());
+    List<scalar> weights(boundaryPoints.size());
+
+    // Compute the distance between the internal point and each boundary point
+    forAll(boundaryPoints, i)
+    {
+        distances[i] = mag(internalPoint - boundaryPoints[i]);
+    }
+
+    // Compute the weights based on inverse distance
+    forAll(weights, i)
+    {
+      //weights[i] = pow(Ldef / distances[i], a) + pow(alpha * Ldef / distances[i], b);
+      //      weights[i] = pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a)) 
+	//           + pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
+	//      weights[i] = pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a))
+	// + pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
+
+	//      weights[i] = pow(static_cast<double>(Ldef / static_cast<double>(distances[i])), static_cast<double>(a))
+	//           + pow(static_cast<double>(alpha * Ldef / static_cast<double>(distances[i])), static_cast<double>(b));
+
+      weights[i] = std::pow(static_cast<double>(Ldef / distances[i]), static_cast<double>(a))
+           + std::pow(static_cast<double>(alpha * Ldef / distances[i]), static_cast<double>(b));
+
+      
+    }
+
+    // Normalize weights
+    scalar sumWeights = 0;
+    forAll(weights, i)
+    {
+        sumWeights += weights[i];
+    }
+
+    if (sumWeights > SMALL)
+    {
+        forAll(weights, i)
+        {
+            weights[i] /= sumWeights;
+        }
+    }
+
+    // Interpolate normal vector using the weights
+    vector interpolatedNormal(0, 0, 0);
+    forAll(boundaryNormals, i)
+    {
+        interpolatedNormal += weights[i] * boundaryNormals[i];
+    }
+
+    return interpolatedNormal;
+}
+
+template<typename T>
+T clamp(const T& value, const T& low, const T& high)
+{
+    return std::max(low, std::min(value, high));
+}
+
+
+
+// Correction for normal vectors based on boundary distance
+void applyNormalCorrection(const fvMesh& mesh, Field<vector>& pointNormals)
+{
+    scalar d1 = 0.5;
+    scalar d2 = 1.5;
+
+    // Access boundary points and normals
+    List<point> boundaryPoints;
+    List<vector> boundaryNormals;
+
+    // Extract boundary points and their normal vectors
+    forAll(mesh.boundaryMesh(), patchi)
+    {
+
+      const fvPatch& patch = mesh.boundary()[patchi];
+      //      const fvPatch& patch = mesh.boundaryMesh()[patchi];
+        forAll(patch, facei)
+        {
+
+	  const face& f = mesh.faces()[patch.faceCells()[facei]];
+	  //	  const face& f = patch.face(facei);
+	  //	  const face& f = patch[facei];
+
+	  vector normal = mesh.Sf()[patch.faceCells()[facei]] / mag(mesh.Sf()[patch.faceCells()[facei]]);
+	  //	  vector normal = f.area() / mag(f.area());
+            forAll(f, pointi)
+            {
+                boundaryPoints.append(mesh.points()[f[pointi]]);
+                boundaryNormals.append(normal);
+            }
+        }
+    }
+
+    // Loop through the internal points and apply normal correction
+    forAll(pointNormals, pointIndex)
+    {
+        const point& p = mesh.points()[pointIndex];
+        scalar dist_bdry = GREAT;  // Distance from boundary, update with actual distances
+
+        // Find the minimum distance to the boundary
+        forAll(boundaryPoints, bpi)
+        {
+            scalar dist = mag(p - boundaryPoints[bpi]);
+            dist_bdry = min(dist_bdry, dist);
+        }
+
+        // Apply buffer zone coefficient
+	scalar dist_coeff = clamp((dist_bdry - d1) / (d2 - d1), scalar(0.0), scalar(1.0));
+	//        scalar dist_coeff = clamp((dist_bdry - d1) / (d2 - d1), 0.0, 1.0);
+
+        // Adjust the normal based on the distance
+        vector interpNormal = inverseDistanceInterpolation(p, boundaryPoints, boundaryNormals);
+        pointNormals[pointIndex] = dist_coeff * pointNormals[pointIndex] + (1.0 - dist_coeff) * interpNormal;
+    }
+}
+
+
+// Function to apply vertical deformation that fades out near the top boundary
+//void applyVerticalDeformation(const Foam::fvMesh& mesh, const Foam::Field<Foam::Vector<double>>& pointDisplacement, scalar zmin, scalar zmax, scalar bottomDeformation);
+void applyVerticalDeformation(const fvMesh& mesh, Field<vector>& pointDisplacement, scalar zmin, scalar zmax, const scalar bottomDeformation){
+
+  // Loop through the internal points and apply vertical deformation
+    forAll(pointDisplacement, pointIndex)
+    {
+      const point& p = mesh.points()[pointIndex];
+      //  point& p = mesh.points()[pointIndex];
+
+        // Compute the relative height (Zrel) of the current point with respect to the top and bottom boundaries
+        scalar Zrel = (zmax - p.z()) / (zmax - zmin);
+
+        // Apply linear scaling to the deformation based on relative height (Zrel)
+        scalar vertDeform = bottomDeformation * Zrel;
+
+        // Modify the z-coordinate of the point, gradually reducing the deformation as it gets closer to the top boundary
+        pointDisplacement[pointIndex].z() += vertDeform;
+    }
+}
+
+//--------------------------------------------------------------
+
+//void applyVerticalDeformation(const Foam::fvMesh& mesh, const Foam::Field<Foam::Vector<double>>& pointDisplacement, scalar zmin, scalar zmax, const Foam::List<scalar>& bottomDeformation);
+
+// Function prototype
+
+
+
+
 int main(int argc, char *argv[])
 {
 #include "setRootCase.H"
@@ -529,6 +687,11 @@ int main(int argc, char *argv[])
 	Info << "Final average normal for point " << pointIndex << " = " << pointNormals[pointIndex] << endl;
       }
 
+
+    
+
+
+ 
 //-------------------------------------------------------------------------------------------------------------------
     
       //    Info<< nl << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
@@ -537,7 +700,27 @@ int main(int argc, char *argv[])
       //    Info<< "End\n" << endl;
       //    Info << "Completed normal vector calculation for patch: " << patchName << endl;
 	
-    } // closes skip constant time 
+    } // closes skip constant time
+
+  // Field to store the point normals and displacements
+    Field<vector> pointNormals(mesh.points().size());
+    Field<vector> pointDisplacement(mesh.points().size());
+
+    // Boundary deformation parameters
+    //    scalar zmin = 0.0;   // Minimum z (bottom boundary)
+    //    scalar zmax = 10.0;  // Maximum z (top boundary)
+    //    scalar bottomDeformation = 1.0;  // Deformation applied to the bottom boundary
+
+    // Apply normal correction
+    //    applyNormalCorrection(mesh, pointNormals);
+
+    // Apply vertical deformation based on relative height
+    //  applyVerticalDeformation(mesh, pointDisplacement, zmin, zmax, bottomDeformation);
+
+    // Write the mesh with deformations
+    //    mesh.write();
+
+  
     return 0;
 } // closes int main()
 
